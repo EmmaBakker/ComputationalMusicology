@@ -9,4 +9,3 @@ The tracks in my corpus are a good representative sample of the female sub-genre
 In the female American hip-hop and rap scene, some typical tracks include "Money" by Cardi B and "WAP" by Megan Thee Stallion. They are confident and bold lyrics about female empowerment and sexuality. An atypical track in the American scene would be "Self" by Noname, which has a much slower beat.
 
 In the female British hip-hop and rap scene, typical tracks include "Offence" by Little Simz and “Mad Love” by Mabel. These tracks are typical for UK rap sound. An atypical track in the British scene would be "Introvert" by Little Simz, which has a more alternative and experimental sound.
-A line I wrote to check git 
