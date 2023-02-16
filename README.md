@@ -10,4 +10,3 @@ In the female American hip-hop and rap scene, some typical tracks include "Money
 
 In the female British hip-hop and rap scene, typical tracks include "Offence" by Little Simz and “Mad Love” by Mabel. These tracks are typical for UK rap sound. An atypical track in the British scene would be "Introvert" by Little Simz, which has a more alternative and experimental sound.
 
-This is a line from Rstudio
