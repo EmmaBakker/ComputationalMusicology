@@ -1,12 +1,11 @@
 # ComputationalMusicology
 
-My corpus consists of female British and American rappers. I chose this corpus because I listen to a lot of female British rap, but I was never really interested in American rap. I am curious to know what sets the two apart and uncover the elements that make each stand out. I wanted to specifically focus on female rappers because they have been underrepresented in the hip-hop genre and I wanted to explore their unique musical styles. 
+For my portfolio, I have chosen a corpus that compares classical music with film soundtracks. The corpus will include track from the “Classical Essential” and “Iconic Soundtracks” playlists on Spotify. I am interested in this because both classical music and film soundtracks can evoke emotions in listeners, but the audiences of both can be very different, which is why I want to see what differentiates the two.
 
-The groups within my corpus are female British and American rappers. I expect to find differences in the musical styles, lyrical themes, and cultural references between the two. I also expect to find similarities in their use of hip-hop beats. I am unsure about the extent to which their respective cultures will influence their music.
+In my corpus I will compare classical compositions with film soundtracks. Within these groups, there are various natural subgroups such as individual composers, specific movies, and musical genres. I expect to find differences in instrumentation and production between the two groups, as well as differences between individual composers and genres. However, I also anticipate finding commonalities in melody, harmony, and musical structure.
 
-The tracks in my corpus are a good representative sample of the female sub-genre for both countries but may not be representative of the entire rap genre in each country and may not include all the important artists within the genre.
+The tracks in my corpus are representative of the groups I want to compare, but there are probably some recordings missing or variations that could affect the analysis. For example, there may be differences between the live and studio versions of a classical piece that are not reflected in the corpus. I will keep this in mind when the data.
 
-In the female American hip-hop and rap scene, some typical tracks include "Money" by Cardi B and "WAP" by Megan Thee Stallion. They are confident and bold lyrics about female empowerment and sexuality. An atypical track in the American scene would be "Self" by Noname, which has a much slower beat.
+One atypical track in my corpus is "Hedwig's Theme" by John Williams, which for most of the track uses only the celesta and a unique melody. A typical track is "Für Elise" by Ludwig van Beethoven, which is a well-known classical piece with a recognizable melody.
 
-In the female British hip-hop and rap scene, typical tracks include "Offence" by Little Simz and “Mad Love” by Mabel. These tracks are typical for UK rap sound. An atypical track in the British scene would be "Introvert" by Little Simz, which has a more alternative and experimental sound.
 
