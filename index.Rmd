@@ -1,9 +1,13 @@
 ---
 title: "Classical music and Movie Soundtracks"
+author: "Emma Bakker"
+date: "2023-03-13"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
     vertical_layout: fill
+  html_document:
+    keep_md: true
 ---
 
 ```{r setup, include=FALSE}
