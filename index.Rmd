@@ -21,6 +21,9 @@ library(plotly)
 library(tidyr)
 library(dplyr)
 library(compmus)
+library(tidymodels)
+library(ggdendro)
+library(heatmaply)
 
 Sys.setenv(SPOTIFY_CLIENT_ID = '76f37f6c523d482a8c825d01db224388')
 Sys.setenv(SPOTIFY_CLIENT_SECRET = '934add8cf3744afc89d1391370327a5d')
@@ -34,6 +37,269 @@ iconic_soundtracks <- get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it")
 
 Visual Analysis {.storyboard data-icon="fa-signal"}
 ======================================================
+
+### Notable patters in Iconic Soundtracks found by hierarchical clustering
+
+```{r}
+
+get_conf_mat <- function(fit) {
+  outcome <- .get_tune_outcome_names(fit)
+  fit |> 
+    collect_predictions() |> 
+    conf_mat(truth = outcome, estimate = .pred_class)
+}  
+
+get_pr <- function(fit) {
+  fit |> 
+    conf_mat_resampled() |> 
+    group_by(Prediction) |> mutate(precision = Freq / sum(Freq)) |> 
+    group_by(Truth) |> mutate(recall = Freq / sum(Freq)) |> 
+    ungroup() |> filter(Prediction == Truth) |> 
+    select(class = Prediction, precision, recall)
+}  
+
+soundtracks <-
+  get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it") |>
+  slice(1:20) |>
+  add_audio_analysis() |>
+  mutate(
+    segments = map2(segments, key, compmus_c_transpose),
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      ),
+    timbre =
+      map(
+        segments,
+        compmus_summarise, timbre,
+        method = "mean"
+      )
+  ) |>
+  mutate(pitches = map(pitches, compmus_normalise, "clr")) |>
+  mutate_at(vars(pitches, timbre), map, bind_rows) |>
+  unnest(cols = c(pitches, timbre))
+
+soundtracks_juice <-
+  recipe(
+    track.name ~
+      danceability +
+      energy +
+      loudness +
+      speechiness +
+      acousticness +
+      instrumentalness +
+      liveness +
+      valence +
+      tempo +
+      duration +
+      C + `C#|Db` + D + `D#|Eb` +
+      E + `F` + `F#|Gb` + G +
+      `G#|Ab` + A + `A#|Bb` + B +
+      c01 + c02 + c03 + c04 + c05 + c06 +
+      c07 + c08 + c09 + c10 + c11 + c12,
+    data = soundtracks
+  ) |>
+  step_center(all_predictors()) |>
+  step_scale(all_predictors()) |> 
+  # step_range(all_predictors()) |> 
+  prep(soundtracks |> mutate(track.name = str_trunc(track.name, 20))) |>
+  juice() |>
+  column_to_rownames("track.name")
+
+
+soundtracks_dist <- dist(soundtracks_juice, method = "euclidean")
+
+soundtracks_dist |> 
+  hclust(method = "complete") |> # Try single, average, and complete.
+  dendro_data() |>
+  ggdendrogram()
+
+heatmaply(
+  soundtracks_juice,
+  hclustfun = hclust,
+  hclust_method = "average",  # Change for single, average, or complete linkage.
+  dist_method = "euclidean",
+  main = "Heatmap of Audio Features for 20 songs of Iconice Soundtracks playlist"
+)
+
+```
+
+---
+
+Here a heatmap and dendrogram based on the audio features of 20 songs from the "Classical Essentials" playlist are visualized. The heatmap displays the audio features of 20 songs from the Iconic Soundtracks playlist, where each row represents a song, and each column represents an audio feature. The colors in the heatmap correspond to the values of each audio feature, where yellow indicates higher values and blue indicates lower values.
+
+The dendrogram illustrates the results of hierarchical clustering of the songs based on their audio features. The height of the dendrogram branches indicates the degree of similarity between songs.
+
+Notable patterns found in the dendrogram show that the 20 songs can be clustered into two main groups. The first group consists of seven songs that are closely related to each other, forming a cluster on the right side of the dendrogram. The second group consists of 13 songs, which are further divided into two subclusters on the left side of the dendrogram.
+
+Among the audio features, loudness seems to be the most useful feature for clustering, as songs with similar loudness values are clustered together. On the other hand, features such as valence and speechiness appear to be less useful for clustering, as there are no clear patterns of similarity or dissimilarity based on these features.
+
+### Notable patters in Classical Essentials found by hierarchical clustering
+
+```{r}
+
+get_conf_mat <- function(fit) {
+  outcome <- .get_tune_outcome_names(fit)
+  fit |> 
+    collect_predictions() |> 
+    conf_mat(truth = outcome, estimate = .pred_class)
+}  
+
+get_pr <- function(fit) {
+  fit |> 
+    conf_mat_resampled() |> 
+    group_by(Prediction) |> mutate(precision = Freq / sum(Freq)) |> 
+    group_by(Truth) |> mutate(recall = Freq / sum(Freq)) |> 
+    ungroup() |> filter(Prediction == Truth) |> 
+    select(class = Prediction, precision, recall)
+} 
+
+classicals <-
+  get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0") |>
+  slice(1:20) |>
+  add_audio_analysis() |>
+  mutate(
+    segments = map2(segments, key, compmus_c_transpose),
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      ),
+    timbre =
+      map(
+        segments,
+        compmus_summarise, timbre,
+        method = "mean"
+      )
+  ) |>
+  mutate(pitches = map(pitches, compmus_normalise, "clr")) |>
+  mutate_at(vars(pitches, timbre), map, bind_rows) |>
+  unnest(cols = c(pitches, timbre))
+
+classicals_juice <-
+  recipe(
+    track.name ~
+      danceability +
+      energy +
+      loudness +
+      speechiness +
+      acousticness +
+      instrumentalness +
+      liveness +
+      valence +
+      tempo +
+      duration +
+      C + `C#|Db` + D + `D#|Eb` +
+      E + `F` + `F#|Gb` + G +
+      `G#|Ab` + A + `A#|Bb` + B +
+      c01 + c02 + c03 + c04 + c05 + c06 +
+      c07 + c08 + c09 + c10 + c11 + c12,
+    data = classicals
+  ) |>
+  step_center(all_predictors()) |>
+  step_scale(all_predictors()) |> 
+  # step_range(all_predictors()) |> 
+  prep(classicals |> mutate(track.name = str_trunc(track.name, 20))) |>
+  juice() |>
+  column_to_rownames("track.name")
+
+
+classicals_dist <- dist(classicals_juice, method = "euclidean")
+
+classicals_dist |> 
+  hclust(method = "complete") |> # Try single, average, and complete.
+  dendro_data() |>
+  ggdendrogram()
+
+heatmaply(
+  classicals_juice,
+  hclustfun = hclust,
+  hclust_method = "average",  # Change for single, average, or complete linkage.
+  dist_method = "euclidean",
+  main = "Heatmap of Audio Features for 20 songs of Classical Essentails"
+)
+
+
+```
+
+---
+
+Here a heatmap and dendrogram based on the audio features of 20 songs from the "Classical Essentials" playlist are visualized. The heatmap displays a color-coded grid where rows represent the songs and columns represent the audio features, such as danceability, energy, and tempo. Warmer colors indicate higher values while cooler colors represent lower values. The dendrogram is a tree-like diagram that shows the hierarchical relationships among the songs based on their audio feature similarities.
+
+Looking at the dendrogram, we can observe that the songs form several distinct clusters, with some clusters being more closely related to each other than others. One notable pattern is that songs with similar tempos tend to cluster together. Additionally, songs with similar pitches also tend to group together. In contrast, the features related to the timbre of the music do not seem to have a strong effect on the clustering.
+
+Regarding the heatmap, we can see that some features, such as loudness, energy, and danceability, show a relatively high degree of variability across the songs, while others, such as speechiness and instrumentalness, show little variability. Interestingly, the heatmap also shows that some songs have a distinctive profile of high or low values across multiple features, indicating that some songs share specific musical characteristics.
+
+Overall, the dendrogram and heatmap provide a useful visualization of the relationships among the songs based on their audio features. It suggests that some features, such as tempo and pitch, are more useful than others for clustering classical music songs based on their audio features.
+
+### What are the differences in tempograms between an outlier and a song that is representative of the rest of the playlist
+
+```{r}
+library(gridExtra)
+
+not_classical <- get_tidy_audio_analysis("4fDodwdZ1LBDL2I2WCnUMY")
+outlier_classical <- get_tidy_audio_analysis("1CDEWKmyRTPWWa7uIKVSU4")
+
+not_soundtracks <- get_tidy_audio_analysis("1CxT3WZkSuEAxPOKAPzDDl")
+outlier_soudtracks <- get_tidy_audio_analysis("5FRGTGPZ7uA6JaLAH55PVV")
+
+
+p1 <- not_classical |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Tsar Saltan, Op. 57: Flight of the Bumblebee' by André Previn") +
+  theme_classic()
+
+p2 <- outlier_classical |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Job, a Masque for Dancing' by Ralph  Vaughan Williams") +
+  theme_classic()
+
+p3 <- not_soundtracks |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'End Titles' by Rachel Portman") +
+  theme_classic()
+
+p4 <- outlier_soudtracks |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Brooks was here' by Thomas Newman") +
+  theme_classic()
+
+# Create plotly objects from the ggplot objects
+p1_ly <- ggplotly(p1)
+p2_ly <- ggplotly(p2)
+p3_ly <- ggplotly(p3)
+p4_ly <- ggplotly(p4)
+
+# Arrange the plots on a grid
+grid <- subplot(p1_ly, p2_ly, p3_ly, p4_ly, nrows = 2, margin = 0.05)
+
+# Display the grid
+grid
+
+```
+
+---
+
+These four plots represent two different playlists: Iconic Soundtracks and Classical Essentials. The tempograms are a way to visualize the tempo of a piece of music over time. 
+
+The first plot shows the tempo of 'Job, a Masque for Dancing' by Ralph Vaughan Williams, an outlier from the Classical Essentials playlist. The second plot shows the tempo of 'Tsar Saltan, Op. 57: Flight of the Bumblebee' by André Previn, a piece from the Classical Essentials playlist. Comparing the two Classical Essentials plots, we can see that 'Job, a Masque for Dancing' has a much more variable tempo than 'Tsar Saltan, Op. 57: Flight of the Bumblebee', with many more peaks and valleys in the tempo curve. This suggests that 'Job, a Masque for Dancing' has a more complex rhythmic structure than 'Tsar Saltan, Op. 57: Flight of the Bumblebee'.
+
+The third plot shows the tempo of 'End Titles' by Rachel Portman, a representative example of the rest of the Iconic Soundtracks playlist. The fourth plot shows the tempo of 'Brooks was here' by Thomas Newman, an outlier from the Iconic Soundtracks playlist.'End Titles' has a relatively stable and consistent tempo throughout the entire track. On the other hand, 'Brooks was here', the outlier track, has a more variable tempo, with frequent changes in tempo throughout the track. Additionally, the tempo of 'Brooks was here' generally tends to be slower than the tempo of 'End Titles'.
+
+Comparing 'End Titles' from the Iconic Soundtracks playlist to 'Tsar Saltan, Op. 57: Flight of the Bumblebee' from the Classical Essentials playlist, we can see that 'End Titles' has a more consistent and stable tempo than 'Tsar Saltan, Op. 57: Flight of the Bumblebee', which has more fluctuations in tempo. This difference may be due to the fact that the Iconic Soundtracks playlist includes music from a wider range of genres and styles than the Classical Essentials playlist, which may have a more narrow focus on classical music.
 
 ### What are the differences in keygrams between an outlier and a song that is representative of the rest of the playlist
 
