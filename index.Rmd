@@ -1,7 +1,7 @@
 ---
-title: "Classical music and Movie Soundtracks"
+title: "Comparing Emotional Content of Playlists"
 author: "Emma Bakker"
-date: "2023-03-13"
+date: "2023-04-02"
 output: 
   flexdashboard::flex_dashboard:
     orientation: columns
@@ -24,6 +24,9 @@ library(compmus)
 library(tidymodels)
 library(ggdendro)
 library(heatmaply)
+library(gridExtra)
+library(kknn)
+library(ranger)
 
 Sys.setenv(SPOTIFY_CLIENT_ID = '76f37f6c523d482a8c825d01db224388')
 Sys.setenv(SPOTIFY_CLIENT_SECRET = '934add8cf3744afc89d1391370327a5d')
@@ -35,10 +38,1374 @@ classical_essentials <- get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0"
 iconic_soundtracks <- get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it") 
 ```
 
-Visual Analysis {.storyboard data-icon="fa-signal"}
+Introduction {data-icon="ion-ios-home-outline"}
+=======================================================
+
+Column {data-width=550}
+-------------------------
+
+### The Emotional Power of Music: Unraveling the Relationship between Classical and Soundtrack Music through Data Analysis
+
+**My Corpus** 
+
+After having a conversation with my grandmother about the emotional impact of music, I became intrigued by the idea of exploring the relationship between the soundtracks that give me goosebumps, such as those from 'How to Train Your Dragon,' and classical music, which my grandmother claims gives her a similar emotional response. I want to delve into the emotional content of these two genres to better understand the ways in which they can elicit nostalgia, happiness, and other emotions in listeners.
+
+Classical music, with its rich history spanning centuries, emphasizes formal structure, harmony, and melody. It is often associated with traditional concert settings and academic study, but can also evoke a wide range of moods and emotions. Soundtracks, on the other hand, are typically composed to accompany visual media, such as movies or TV shows, and aim to evoke specific moods or emotions in the listener. They may draw from a variety of musical genres, including classical music, as a source of inspiration or to create a particular atmosphere.
+
+In this portfolio, I will aim to explore the emotional content of these two genres and examine how they may be related. To do so, I will use the Spotify API to gather data on the playlists "Classical Essentials" and "Iconic Soundtracks" and analyze their musical features. The goal is to identify similarities and differences in the emotional content of classical music and soundtrack music, and to determine if the use of classical music in soundtracks contributes to their emotional impact.
+
+By exploring the emotional content of these two genres, I hope to gain insights into the unique ways in which they convey feelings and emotions through music, and how their similarities and differences can be attributed to their contexts of use. Ultimately, my research may shed light on the complex relationship between classical music and soundtrack music, and their role in shaping the emotional landscape of music.
+
+**Visualizations** 
+
+Visualizations made with the spotify API will help to get a better understanding of the emotional content between soundtracks and classical music by providing insights into their underlying musical features. Features such as chromagrams, self-similarity matrices, chordograms, and keygrams can help to identify patterns and structures in the music that contribute to its emotional impact. Tempograms can reveal the tempo fluctuations and rhythmic patterns that can influence emotional responses in listeners. Clustering methods like dendrograms can help to identify similarities and differences between the two genres based on their emotional content. By analyzing these visualizations, we can gain a more nuanced understanding of how soundtracks and classical music evoke emotions and the ways in which they differ in their emotional impact.
+
+
+**What to expect**
+
+Both genres have the potential to evoke a wide range of emotions, such as joy, sadness, excitement, and nostalgia, through their use of melody, harmony, rhythm, and other musical features. However, it is also possible that there may be differences in the emotional content of the two genres, based on factors such as the intended context or purpose of the music, the cultural associations of the genre, or the musical features that are most commonly used. Ultimately, the outcome of this research will depend on the specific analysis and comparison of the emotional content of classical music and soundtracks, and the methods used to measure and interpret that content.
+
+Column {data-width=225}
+-------------------------
+
+### Classical Essentials
+
+<iframe src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWEJlAGA9gs0?utm_source=generator" width="100%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+
+Column {data-width=225}
+-------------------------
+
+### Iconic Soundtracks
+
+<iframe src="https://open.spotify.com/embed/playlist/37i9dQZF1DX1tz6EDao8it?utm_source=generator" width="100%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+
+
+
+Emotional features {.storyboard data-icon="fa-signal"}
 ======================================================
 
-### Notable patters in Iconic Soundtracks found by hierarchical clustering
+### Exploring Emotional Tone in Playlists: A Scatterplot Analysis of Energy, Loudness, and Acousticness {data-commentary-width=650}
+
+```{r}
+classical <- get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0")
+soundtracks <- get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it")
+
+# add playlist names to the data frames
+classical$playlist <- "Classical Essentials"
+soundtracks$playlist <- "Iconic Soundtracks"
+
+# combine the playlists into one dataframe
+audio_features <- bind_rows(classical, soundtracks)
+
+
+# create a more colorful color scale based on acousticness
+color_scale <- scale_color_gradient(low = "#FEE08B", high = "#D53E4F", guide = guide_colorbar(title = "Acousticness"))
+
+# create scatterplot with geom_jitter() and geom_smooth()
+scatter_plot <- ggplot(audio_features, aes(x = energy, y = loudness, color = acousticness, text = paste("Track: ", track.name, "<br>",
+                          "Energy: ", energy, "<br>",
+                          "Loudness: ", loudness, "<br>",
+                          "Acousticness: ", acousticness))) +
+  geom_jitter(alpha = 0.8, size = 2) +
+  facet_wrap(~ playlist, scales = "free", labeller = labeller(playlist = c("Classical Essentials" = "Classical Essentials", "Iconic Soundtracks" = "Iconic Soundtracks"))) +
+  geom_smooth(aes(group = playlist), method = "lm", se = FALSE, color = "black", alpha = 0.5, size = 1) +
+  scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(-45, -5), expand = c(0, 0)) +
+  color_scale +
+  labs(x = "Energy", y = "Loudness", title = "Scatterplot Analysis of loudness, acousticness and energy", color = "Acousticness") +
+  theme_bw() +
+  theme(strip.background = element_rect(fill= "#ffcccb"), panel.grid.major = element_line(color = "gray90"), panel.grid.minor = element_blank(), panel.border = element_blank(), axis.line = element_line(colour = "black"), strip.text = element_text(size = 14)) 
+
+# convert scatterplot to plotly object for interactivity
+scatter_plot <- ggplotly(scatter_plot, tooltip = "text", width = 1000, height = 500)
+
+# set plot background to grid
+scatter_plot %>% layout(plot_bgcolor = "white", paper_bgcolor = "white", xaxis = list(showgrid = TRUE, gridcolor = "gray90"), yaxis = list(showgrid = TRUE, gridcolor = "gray90"))
+
+# display the plot
+scatter_plot
+
+```
+
+---
+
+**Visualization**
+
+The scatterplot displays a comparison of the two playlists based on their energy and loudness levels, with the color scale representing acousticness. The x-axis shows energy, which is a measure of the intensity and activity level of the music, while the y-axis shows loudness, which is a measure of the volume. The acousticness value represents the degree to which the track is acoustic (as opposed to electronic). 
+
+**Why this plot**
+
+Energy measures the intensity and activity level of a song. High energy levels can create a feeling of excitement, while low energy levels can create a feeling of calm or relaxation. Loudness measures the volume of a song. High loudness levels can create a feeling of intensity or aggressiveness, while low loudness levels can create a feeling of intimacy or introspection. Acousticness measures the degree to which a song is acoustic (as opposed to electronic). High acousticness levels can create a feeling of nostalgia or emotional depth, while low acousticness levels can create a feeling of modernity or innovation. 
+
+**Emotion within the plot**
+
+The scatterplot shows that the Classical Essentials playlist tends to have music with lower energy and loudness levels, which appear as a cluster of points in the lower left-hand corner of the plot. These songs also tend to have higher acousticness levels, as indicated by the warm colors on the color scale. This suggests a more relaxed and subdued emotional tone. This type of music may create a soothing atmosphere, which can be helpful for stress relief or relaxation. In contrast, the Iconic Soundtracks playlist has a wider range of energy and loudness levels, which appear as a more scattered distribution of points across the plot. This suggests a more dynamic and varied emotional tone. The high-energy tracks may create a feeling of excitement, while the low-energy tracks may create a feeling of melancholy or introspection. 
+
+The overlap between the two playlists, with some songs having similar energy and loudness levels, may suggest that there are emotional similarities between them. For example, some of the higher-energy tracks in the Iconic Soundtracks playlist may evoke similar emotions as the Classical Essentials playlist's lower-energy tracks, such as feelings of relaxation or introspection. Similarly, some of the lower-energy tracks in the Iconic Soundtracks playlist may evoke similar emotions as the Classical Essentials playlist's higher-energy tracks, such as feelings of excitement or inspiration. These emotional similarities may be related to the acousticness of the tracks or other factors, and may be subjective to the individual listener's preferences and experiences. However, the scatterplot provides insight into the general emotional tone and atmosphere of the two playlists based on their energy, loudness, and acousticness levels.
+
+In summary, the plot shows the differences and similarities between two playlists in terms of energy, loudness, and acousticness, which may reflect their overall emotional tone and atmosphere.
+
+
+### Tempo and Mode Revealing Emotional Differences {data-commentary-width=650}
+
+```{r}
+
+classical_features_analysis <- get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0") |> add_audio_analysis()
+soundtrack_features_analysis <- get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it") |> add_audio_analysis()
+
+playlists <-
+  bind_rows(
+    classical_features_analysis |> mutate(category = "Classical"),
+    soundtrack_features_analysis |> mutate(category = "Soundtracks")
+  )
+
+playlists <- playlists %>% rename(track = track.name)
+
+tempo_playlists <- playlists |>
+  mutate(
+    sections =
+      map(
+        sections,                                    # sections or segments
+        summarise_at,
+        vars(tempo, loudness, duration),             # features I want
+        list(section_mean = mean, section_sd = sd)  
+      )
+  ) |>
+  unnest(sections)
+
+# Animated Tempo Plot
+tempo_plot <- tempo_playlists %>%
+  plot_ly(x = ~tempo, y = ~tempo_section_sd, size = ~time_signature, color = ~mode, opacity = ~factor(loudness), 
+          hoverinfo = "text", text = paste("Playlist: ", tempo_playlists$category, "<br>",
+                                           "Track: ", tempo_playlists$track, "<br>",
+                                           "Tempo: ", tempo_playlists$tempo, "<br>",
+                                           "Loudness: ", tempo_playlists$loudness, "<br>",
+                                           "Time signature: ", tempo_playlists$time_signature)) %>%
+  add_markers(frame = ~category) %>%
+  layout(title = 'Tempo of the playlists', xaxis = list(title = "Mean Tempo (bpm)"), yaxis = list(range = c(0,10), title = 'SD Tempo')) %>%
+  animation_opts(frame = 2000, 
+                 transition = 100,
+                 easing = "linear") %>%
+  animation_slider(currentvalue = list(prefix = NULL,
+                                       font = list(color = "a9dea9", size = 20)))
+
+tempo_plot
+
+```
+
+---
+
+**Visualization**
+
+This plot visualizes the relationship between the tempo and mode of the tracks within the two playlists." The x-axis represents the mean tempo (beats per minute) of each track, while the y-axis represents the standard deviation of the tempo for each track. The size of the markers represents the time signature of each track, and the color represents the mode (major or minor) of each track. The opacity of the markers represents the loudness of each track. 
+
+**Why this plot**
+
+The tempo and mode of a piece of music can convey emotional information to the listener. A faster tempo can create a feeling of excitement or urgency, while a slower tempo can create a feeling of calm or melancholy. The mode of a piece of music (major or minor) can also affect the emotional response of the listener, with major keys generally associated with happiness and minor keys associated with sadness.
+
+**Emotion within the plot**
+
+The plot shows that the tracks in the "Classical Essentials" playlist tend to have a lower mean tempo compared to the tracks in the "Iconic Soundtracks" playlist. This means that the tracks in the "Classical Essentials" playlist are generally slower in tempo than the tracks in the "Iconic Soundtracks" playlist. The lower tempo of the tracks in the "Classical Essentials" playlist can create a calming effect on the listener, as slower tempos are often associated with relaxation and meditation. On the other hand, the higher tempo of the tracks in the "Iconic Soundtracks" playlist can create a more energetic and dynamic emotional response in the listener.
+
+Moreover, the tempo standard deviation for the "Classical Essentials" playlist is lower than that of the "Iconic Soundtracks" playlist. This suggests that the tracks in the "Classical Essentials" playlist have a more consistent tempo throughout the song, while the tempo in the "Iconic Soundtracks" playlist may vary more, creating a more dynamic emotional response in the listener.
+
+Additionally, the plot shows that most of the tracks in the "Classical Essentials" playlist are in a major key, while the tracks in the "Iconic Soundtracks" playlist are evenly split between major and minor keys. Music in a major key is often associated with positive emotions such as happiness, joy, and optimism, while music in a minor key is often associated with negative emotions such as sadness, grief, and melancholy. Therefore, the fact that the "Classical Essentials" playlist has more tracks in a major key suggests that it may create a more uplifting emotional response in the listener compared to the "Iconic Soundtracks" playlist, which has a more varied key signature.
+
+In summary, the plot suggests that the "Classical Essentials" and "Iconic Soundtracks" playlists may evoke different emotional responses from listeners due to differences in tempo and mode. The slower tempo and more consistent tempo of the "Classical Essentials" playlist, combined with its emphasis on major key signatures, suggest that it may create a more calming and uplifting emotional response in the listener. The more varied tempo and mode of the "Iconic Soundtracks" playlist, on the other hand, may create a wider range of emotional responses, including both positive and negative emotions.
+
+### Exploring the Emotional Content of Music Playlists: Valence-Energy Scatter Plot Analysis {data-commentary-width=650}
+
+```{r}
+# Get audio features and analysis for two Spotify playlists
+classical_features_analysis <- get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0") %>% 
+  add_audio_analysis()
+soundtrack_features_analysis <- get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it") %>% 
+  add_audio_analysis()
+
+# Combine data frames and rename track column
+playlists <- bind_rows(classical_features_analysis %>% mutate(category = "Classical"),
+                       soundtrack_features_analysis %>% mutate(category = "Soundtracks")) %>% 
+  rename(track = track.name)
+
+# Compute mean values of valence and energy for each category
+mean_playlists <- playlists %>% 
+  group_by(category) %>%
+  summarize(meanvalence = mean(valence), meanenergy = mean(energy))
+
+
+visu <- ggplot(data = playlists) +
+  geom_vline(xintercept = 0.5) +
+  geom_hline(yintercept = 0.5) +
+  geom_vline(data = mean_playlists, aes(xintercept = meanvalence, color = category), 
+             linetype = "dotted", linewidth = 0.4) +
+  geom_hline(data = mean_playlists, aes(yintercept = meanenergy, color = category), 
+             linetype = "dotted", linewidth = 0.4) +
+  geom_point(aes(x = valence, y = energy, color = category, 
+                 text = paste("Track: ", track, "<br>",
+                              "Playlist: ", category, "<br>",
+                              "Energy: ", energy, "<br>",
+                              "Valence: ", valence, "<br>",
+                              "Key: ", key_mode)), size = 3, alpha = 0.7) +
+  labs(y = 'Energy', x = 'Valence', color = 'Playlist', title = "Emotions according to energy and valence") +
+  scale_x_continuous(expand = c(0, 0), limits = c(-0.1, 1.1)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(-0.1, 1.1)) +
+  scale_color_manual(values = c("Classical" = "#86C6D9", "Soundtracks" = "#E9D2B7")) +
+  theme_bw() +
+  theme(legend.position = c(0.76, 0.23), axis.text.x = element_blank(), 
+        axis.text.y = element_blank(), axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank(), panel.grid.major = element_blank()) +
+  # Add labels to the corners of the plot
+  annotate('text', x = 0.25 / 4, y = 1.05, label = "Angry", fontface = "bold") +
+  annotate('text', x = 1-(0.25/4), y = 1.05, label = "Happy", fontface = "bold") +
+  annotate('text', x = 1-(0.25/4), y = -0.05, label = "Calm", fontface = "bold") +
+  annotate('text', x = 0.25 / 4, y = -0.05, label = "Sad", fontface = "bold") 
+
+# Save the plot as a variable
+visu_plotly <- ggplotly(visu, tooltip = c("text"))
+
+# Print the plot
+visu_plotly
+
+
+```
+
+---
+
+**Visualization**
+
+The graph depicts the relationship between energy and valence of songs in the two different playlists. The x-axis represents the valence, which is a measure of the musical positivity conveyed by a song, while the y-axis represents the energy, which is a measure of the intensity and activity of a song.
+
+**Why this plot**
+
+The emotional quadrants in the plot are based on two measures: valence and energy. Valence refers to the degree of positivity or negativity of an emotion, with high valence indicating positive emotions and low valence indicating negative emotions. Energy, on the other hand, refers to the level of intensity or activity in the music, with high energy indicating fast and loud music and low energy indicating slow and quiet music.
+The emotions chosen for the quadrants - angry, happy, sad, and calm - are commonly used in music psychology research and are based on the valence and arousal dimensions of emotion. Angry and happy are high valence and high arousal emotions, while sad and calm are low valence and low arousal emotions.
+The placement of songs in each emotional quadrant is influenced by their valence and energy levels. Songs with high energy and high valence are likely to be placed in the happy quadrant, while those with low energy and high valence are likely to be placed in the calm quadrant. Similarly, songs with low energy and low valence are likely to be placed in the sad quadrant, while those with high energy and low valence are likely to be placed in the angry quadrant.
+
+**Emotion within the plot**
+
+In this plot, both playlists are predominantly placed in the sad quadrant, which suggests that the majority of songs in these playlists have negative emotions with low energy levels. This is interesting, as one might expect the "Soundtracks" playlist to have more positive emotions, given the uplifting nature of many movie soundtracks. However, the plot also shows that there are some outliers in each playlist, which indicates that there are some songs with higher valence and energy levels that could potentially be used to create a more diverse emotional experience within the playlists.
+
+**Conclusion**
+
+Based on the earlier graphs provided, it may have been unexpected to see both playlists predominantly placed in the sad emotional quadrant. The tempo and loudness of the "Iconic Soundtracks" playlist seemed higher and therefore expected to be "happier" and "angrier". Based on valence and energy alone this doesn't seem the case and both turn out to be predominantly in the sad quadrent. 
+Overall, this plot provides a useful visualization of the emotional content of songs in different playlists and highlights the importance of valence and energy in shaping emotional responses to music.
+
+Chromagram {.storyboard data-icon="fa-signal"}
+======================================================
+
+### Exploring the Emotional Impact of Iconic Soundtracks through Chromagrams {data-commentary-width=650}
+
+```{r}
+
+## Outlier s
+
+mission <-
+  get_tidy_audio_analysis("1FL7eUG80aeUeyMO2N4btN") |>
+  select(segments) |>
+  unnest(segments) |>
+  select(start, duration, pitches)
+
+
+mission_plot <- mission |>
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) |>
+  compmus_gather_chroma() |> 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  theme(plot.title = element_text(size = 14)) +
+  labs(title =  "'Mission: Impossible Theme", x = "Time (s)", y = NULL, fill = "Magnitude") +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c()
+
+
+## Normal s
+
+pelagia <-
+  get_tidy_audio_analysis("7aVRZwGYPypqF7AMN0pwCG") |>
+  select(segments) |>
+  unnest(segments) |>
+  select(start, duration, pitches)
+
+
+pelagia_plot <- pelagia |>
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) |>
+  compmus_gather_chroma() |> 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  theme(plot.title = element_text(size = 14)) +
+  labs(title = "'Pelagia's Song", x = "Time (s)", y = NULL, fill = "Magnitude") +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c()
+
+
+grid.arrange(mission_plot, pelagia_plot, ncol = 1)
+
+```
+
+---
+
+**Visualization**
+
+A chromagram is a visual representation of the pitch content of an audio signal. It divides the frequency spectrum into a set of semitone frequency bands, and for each band, calculates the energy present in that band at each point in time. By plotting this energy over time, we can see how the pitch content of the music changes over the course of the song.
+
+**Chosen Songs**
+
+The first chromagram being discussed is an outlier of the song 'Mission: Impossible Theme' by Michael Giacchino from the "Iconic Soundtracks" playlist, which was positioned inside the "happy" quadrant of the scatterplot earlier.The second chromagram is a representative song, 'Pelagia's Song' by Orchestra, Nick Ingman from the "Iconic Soundtracks playlist, which has energy and valence values that are the same as the average values for the playlist. Other features of this song are also around the average of the song. These songs will be used in all further analysis where songs will be compared.
+
+**Why this plot**
+
+By comparing the chromagrams of outlier and representative songs from each playlist, you can identify the specific musical features that differentiate the two playlists. 
+Chromagrams can help to identify the key of the song, which can be an important factor in determining its emotional content. Different keys are often associated with different emotional states, so knowing the key of a song can give us some insight into the emotions it is likely to evoke.
+They can also help to identify patterns in the pitch content of the music that are associated with particular emotional states. For example, in some styles of music, minor keys are often associated with sadness or melancholy, while major keys are associated with happiness or excitement. 
+By looking at the chromagram of a song, we can see whether it follows these patterns or not.
+
+**Emotion within the plot**
+
+The chromagram plot for "Mission: Impossible Theme" by Michael Giacchino appears to have a more irregular and diverse distribution of pitch classes throughout the duration of the song, as compared to "Pelagia's Song" by Orchestra, Nick Ingman, which has a more uniform and consistent distribution of pitch classes. This indicates that "Mission: Impossible Theme" is likely to have a more complex and dynamic melody than "Pelagia's Song", with greater variation in pitch and tone, while the latter is likely to have a more consistent and stable melody.
+
+The emotional impact of these differences on the playlist is that "Mission: Impossible Theme" may create a more intense and exhilarating atmosphere due to its complex and dynamic melody, while "Pelagia's Song" may create a more calming and soothing atmosphere due to its stable and uniform melody. The difference in emotional impact could be particularly relevant to a playlist of iconic soundtracks, where the selection of songs is likely to be based on their ability to evoke strong emotions and associations with the movies they were featured in. Overall, the outlier and representative songs in the playlist can provide a range of emotions and contribute to the overall atmosphere of the playlist.
+
+<iframe src="https://open.spotify.com/embed/track/1FL7eUG80aeUeyMO2N4btN?utm_source=generator" width="100%" height="85" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+<iframe src="https://open.spotify.com/embed/track/7aVRZwGYPypqF7AMN0pwCG?utm_source=generator" width="100%" height="85" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+
+### Exploring the Emotional Impact of Classical Essentials through Chromagrams {data-commentary-width=650}
+
+```{r}
+
+## Outlier c
+
+solomon <-
+  get_tidy_audio_analysis("1bTXAKwE2Hztv13xTAhMQB") |>
+  select(segments) |>
+  unnest(segments) |>
+  select(start, duration, pitches)
+
+
+solomon_plot <- solomon |>
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) |>
+  compmus_gather_chroma() |> 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  theme(plot.title = element_text(size = 14)) +
+  labs(title = "'Solomon HWV 67 / Act 3", x = "Time (s)", y = NULL, fill = "Magnitude") +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c()
+
+
+## Normal c
+
+string <-
+  get_tidy_audio_analysis("2Cc5z5swQrDqZiyCkZ0TnF") |>
+  select(segments) |>
+  unnest(segments) |>
+  select(start, duration, pitches)
+
+
+string_plot <- string |>
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) |>
+  compmus_gather_chroma() |> 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  theme(plot.title = element_text(size = 14)) +
+  labs(title = "'String Quartet: I.", x = "Time (s)", y = NULL, fill = "Magnitude") +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c()
+
+grid.arrange(solomon_plot, string_plot, ncol = 1)
+
+```
+
+---
+
+**Chosen Songs**
+
+The first chromagram being discussed is an outlier of the song "Solomon HWV 67 / Act 3 - The Arrival Of The Queen Of Sheba" by George Frideric Handel from the "Classical Essentials" playlist, which was positioned inside the "happy" quadrant of the scatterplot earlier.The second chromagram is a representative song, "String Quartet: I. Modere" by Germaine Tailleferre from the "Classical Soundtracks" playlist, which has energy and valence values that are the same as the average values for the playlist. Other features of this song are also around the average of the song. These songs will be used in all further analysis where songs will be compared.
+
+**Emotion within the plot**
+
+The chromagram of "Solomon HWV 67 / Act 3 - The Arrival Of The Queen Of Sheba" by George Frideric Handel is different from the chromagram of "String Quartet: I. Modere" by Germaine Tailleferre in terms of the distribution of pitch classes and their relative intensities over time.
+
+In the outlier plot, we can see that there are dominant pitches (e.g., F, A, and C) that appear repeatedly throughout the piece, creating a distinct melody. These pitches are also played by different instruments, creating a rich texture. On the other hand, in the representative plot, we see a more balanced distribution of pitches, with no dominant pitch class or melody. The overall sound is more subtle and serene.
+
+These differences in chromagrams can convey different emotions and moods, which are important in constructing a playlist. In the case of "Classical Essentials," the playlist is likely designed to evoke a sense of calmness and relaxation, which is why "String Quartet: I. Modere" is a better representative of the playlist. On the other hand, "Solomon HWV 67 / Act 3 - The Arrival Of The Queen Of Sheba" might be included as an outlier to add variety or to provide a contrast to the other pieces in the playlist.
+By comparing the chromagrams of outlier and representative songs from each playlist, you can identify the specific musical features that differentiate the two playlists.
+
+
+<iframe src="https://open.spotify.com/embed/track/1bTXAKwE2Hztv13xTAhMQB?utm_source=generator" width="100%" height="85" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+<iframe src="https://open.spotify.com/embed/track/2Cc5z5swQrDqZiyCkZ0TnF?utm_source=generator" width="100%" height="85" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe> 
+
+
+### Conclusion; tension and suspence versus liveliness and introspection
+
+```{r}
+
+grid.arrange(mission_plot, pelagia_plot, solomon_plot, string_plot, ncol = 2)
+
+```
+
+---
+
+**Conclusion**
+
+In the "Iconic Soundtracks" playlist, the "Mission: Impossible Theme" chromagram contains a lot of high-pitched notes and a distinct percussive rhythm, which could contribute to a feeling of tension and suspense in the music. On the other hand, the "Pelagia's Song" chromagram contains more sustained, lower-pitched notes, which could contribute to a more melancholic or reflective emotional tone.
+
+In the "Classical Essentials" playlist, the "Solomon HWV 67" chromagram contains a lot of bright, staccato notes that give the music a lively, energetic feel. In contrast, the "String Quartet: I. Modere" chromagram contains more legato notes and a slower tempo, which could contribute to a more introspective or peaceful emotional tone.
+
+In conclusion, when comparing the chromagrams of the "Iconic Soundtracks" and "Classical Essentials" playlists, it becomes clear that both playlists employ a variety of musical techniques and styles to convey different emotional tones. While the "Iconic Soundtracks" playlist uses percussive rhythms and high-pitched notes to create tension and suspense, the "Classical Essentials" playlist convey liveliness and introspection. Overall, these playlists demonstrate the diverse range of emotions that can be conveyed through music and how musical elements can be used to elicit different emotional responses from the listener.
+
+
+
+### DTW Matrix shows emotional contrast {data-commentary-width=650}
+
+```{r}
+
+## DTW represenatatives
+
+rep_s <-
+  get_tidy_audio_analysis("7aVRZwGYPypqF7AMN0pwCG") |>
+  select(segments) |>
+  unnest(segments) |>
+  select(start, duration, pitches)
+
+rep_c <-
+  get_tidy_audio_analysis("2Cc5z5swQrDqZiyCkZ0TnF") |>
+  select(segments) |>
+  unnest(segments) |>
+  select(start, duration, pitches)
+
+
+reps_dtw <- compmus_long_distance(
+  rep_s |> mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
+  rep_c |> mutate(pitches = map(pitches, compmus_normalise, "chebyshev")),
+    feature = pitches,
+    method = "euclidean"
+  ) |>
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_equal() +
+  labs(x = "'Pelagia's Song", y = "'String Quartet: I", title = "Representative songs of both playlists") +
+  theme_minimal() +
+  scale_fill_viridis_c(guide = NULL)
+
+reps_dtw
+
+```
+
+---
+
+**Visualization**
+
+The DTW matrix plot shows the similarity between two representative songs for each of the playlists, "String Quartet: I. Modere" by Germaine Tailleferre and "Pelagia's Song" by Orchestra, Nick Ingman. The x-axis and y-axis represent the time series of the two songs, and the color of each tile represents the distance between each pair of time points in the songs. Darker tiles indicate a higher distance, while lighter tiles indicate a lower distance.
+
+**Why this plot**
+
+Comparing the representative song from both the playlists in a Dynamic Time Warping matrix, is likely to provide the most informative comparison of the emotional expression in the two playlists. The representative songs are likely to be the most typical or representative of the emotional content of each playlist, and comparing them will give a sense of how the playlists differ or are similar in terms of emotional expression. 
+
+**Emotion within the plot**
+
+In the plot can be seen that the two songs have similar patterns and structures, as there are many light-colored tiles along the diagonal of the matrix, indicating that the corresponding time points in the two songs are similar. However, there are also some darker tiles that indicate some differences between the two songs.
+
+The emotional content of a playlist can be conveyed through the similarity and contrast between the songs in the playlist. By comparing the representative songs from two different playlists, we can gain insights into the emotional differences between the playlists. In this case, we can see that the two representative songs have some similarities but also some differences, which may contribute to the emotional contrast between the "Classical essentials" and "Iconic Soundtracks" playlists.
+
+
+Self-Similarity Matrices {.storyboard data-icon="fa-signal"}
+======================================================
+
+### Iconic Soundtracks songs mostly evoke emotions of familiarity and excitemen {data-commentary-width=650}
+
+```{r}
+outlier_song_s <-
+  get_tidy_audio_analysis("1FL7eUG80aeUeyMO2N4btN") |> # Change URI.
+  compmus_align(bars, segments) |>                     # Change `bars`
+  select(bars) |>                                      #   in all three
+  unnest(bars) |>                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) |>
+  mutate(
+    timbre =
+      map(segments,
+          compmus_summarise, timbre,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+outlier_song_s_plot <- bind_rows(
+  outlier_song_s |> 
+    compmus_self_similarity(pitches, "euclidean") |> 
+    mutate(d = d / max(d), type = "Chroma"),
+  outlier_song_s |> 
+    compmus_self_similarity(timbre, "euclidean") |> 
+    mutate(d = d / max(d), type = "Timbre")
+) |>
+  mutate() |> 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  facet_wrap(~type) +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "", y = "", title = "'Mission: Impossible Theme' by Michael Giacchino") +
+  theme_minimal()
+
+normal_song_s <-
+  get_tidy_audio_analysis("7aVRZwGYPypqF7AMN0pwCG") |> # Change URI.
+  compmus_align(bars, segments) |>                     # Change `bars`
+  select(bars) |>                                      #   in all three
+  unnest(bars) |>                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) |>
+  mutate(
+    timbre =
+      map(segments,
+          compmus_summarise, timbre,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+
+normal_song_s_plot <- bind_rows(
+  normal_song_s |> 
+    compmus_self_similarity(pitches, "euclidean") |> 
+    mutate(d = d / max(d), type = "Chroma"),
+  normal_song_s |> 
+    compmus_self_similarity(timbre, "euclidean") |> 
+    mutate(d = d / max(d), type = "Timbre")
+) |>
+  mutate() |> 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  facet_wrap(~type) +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() + 
+  #theme(plot.title = element_text(size = 14)) +
+  labs(x = "", y = "", title = "'Pelagia's Song")
+
+
+grid.arrange(outlier_song_s_plot, normal_song_s_plot, ncol = 1)
+
+```
+
+---
+
+**Visualization**
+
+A chroma self-similarity matrix is a matrix that represents the chroma features of a song. Chroma features are useful for identifying the tonality and harmony of a song, as well as for detecting melody and rhythm. A chroma self-similarity matrix compares the chroma features of a song to itself, that is, it shows how similar different segments of the song are to each other in terms of their chroma features.
+
+A timbre self-similarity matrix is a matrix that represents the timbre features of a song. Timbre features are useful for identifying the timbral characteristics of a sound, such as its brightness, warmth, or richness. A timbre self-similarity matrix compares the timbre features of a song to itself, that is, it shows how similar different segments of the song are to each other in terms of their timbre features.
+
+**Why this plot**
+
+Both chroma and timbre self-similarity matrices can be useful for understanding the emotional expression within a song. For example, if a song is sad, it may have a consistent set of chroma and timbre features that convey that emotion throughout the song, resulting in a mostly dark diagonal on the self-similarity matrix. On the other hand, if a song is more complex emotionally and incorporates different moods or emotional shifts, the self-similarity matrices may have brighter spots, indicating different chroma or timbre features used to convey different emotions. By analyzing these matrices, one can gain insight into the emotional nuances of the song and how they are conveyed musically.
+By comparing an outlier song from one playlist with a representative song from the same playlist, it can provide an understanding of the range of emotion expressed within that particular playlist. 
+
+**Emotion within the plot**
+
+Looking at the plots, the chroma self-similarity matrix for "Mission: Impossible Theme", the outlier of "Iconic Soundtracks" shows a regular and strong diagonal pattern, indicating a consistent and recognizable melody. In contrast, the timbre self-similarity matrix for this song has a more scattered and irregular pattern, indicating a complex and varied sound. These characteristics of the song could evoke emotions of familiarity and excitement from the recognizable melody, and also curiosity and intrigue from the complex sound.
+
+The chroma self-similarity matrix for "Pelagia's Song", the representative of "Iconic Soundtracks", has a diagonal pattern, but it is less regular compared to the one for "Mission: Impossible Theme". The timbre self-similarity matrix for this song has a more distinct and regular pattern, indicating a consistent sound. These characteristics of the song could evoke emotions of familiarity and excitement from the consistent sound, and also a sense of familiarity from the recognizable melody.
+
+Overall, the self-similarity matrices provide insights into the structure and patterns of the songs, and could be used to infer the emotions that they may evoke in a listener.
+
+### Classical Essentials goes from joy or nostalgia to surprise, and this itself is a surprise {data-commentary-width=650}
+
+```{r}
+
+outlier_song_c <-
+  get_tidy_audio_analysis("1bTXAKwE2Hztv13xTAhMQB") |> # Change URI.
+  compmus_align(bars, segments) |>                     # Change `bars`
+  select(bars) |>                                      #   in all three
+  unnest(bars) |>                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) |>
+  mutate(
+    timbre =
+      map(segments,
+          compmus_summarise, timbre,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+outlier_song_c_plot <- bind_rows(
+  outlier_song_c |> 
+    compmus_self_similarity(pitches, "euclidean") |> 
+    mutate(d = d / max(d), type = "Chroma"),
+  outlier_song_c |> 
+    compmus_self_similarity(timbre, "euclidean") |> 
+    mutate(d = d / max(d), type = "Timbre")
+) |>
+  mutate() |> 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  facet_wrap(~type) +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "", y = "", title = "'Solomon HWV 67 / Act 3") +
+  theme_minimal()
+
+normal_song_c <-
+  get_tidy_audio_analysis("2Cc5z5swQrDqZiyCkZ0TnF") |> # Change URI.
+  compmus_align(bars, segments) |>                     # Change `bars`
+  select(bars) |>                                      #   in all three
+  unnest(bars) |>                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) |>
+  mutate(
+    timbre =
+      map(segments,
+          compmus_summarise, timbre,
+          method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+
+normal_song_c_plot <- bind_rows(
+  normal_song_c |> 
+    compmus_self_similarity(pitches, "euclidean") |> 
+    mutate(d = d / max(d), type = "Chroma"),
+  normal_song_c |> 
+    compmus_self_similarity(timbre, "euclidean") |> 
+    mutate(d = d / max(d), type = "Timbre")
+) |>
+  mutate() |> 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  facet_wrap(~type) +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() + 
+  #theme(plot.title = element_text(size = 14)) +
+  labs(x = "", y = "", title =  "'String Quartet: I.")
+
+grid.arrange(outlier_song_c_plot, normal_song_c_plot, ncol = 1)
+
+```
+
+---
+
+**Emotion within the plot**
+
+The first song, "Solomon HWV 67 / Act 3 - The Arrival Of The Queen Of Sheba" by George Frideric Handel, shows a stronger and regular diagonal pattern in the chroma self-similarity matrix. This suggests that the song has a strong and recognizable melody that could evoke emotions of familiarity, joy, or nostalgia.
+
+The second song, "String Quartet: I. Modere" by Germaine Tailleferre, shows a more scattered and irregular pattern in the timbre self-similarity matrix. This suggests that the song has a more complex and varied sound that could evoke emotions of surprise, intrigue, or complexity.
+
+Chordograms {.storyboard data-icon="fa-signal"}
+======================================================
+
+### Chordograms of the soundtracks show that they evoke a range of feelings but can also evoke a more straightforward emotional content {data-commentary-width=650}
+
+
+```{r}
+circshift <- function(v, n) {
+  if (n == 0) v else c(tail(v, n), head(v, -n))
+}
+
+#      C     C#    D     Eb    E     F     F#    G     Ab    A     Bb    B
+major_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    0,    0)
+minor_chord <-
+  c(   1,    0,    0,    1,    0,    0,    0,    1,    0,    0,    0,    0)
+seventh_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    1,    0)
+
+major_key <-
+  c(6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
+minor_key <-
+  c(6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
+
+chord_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:7", circshift(seventh_chord, 6),
+    "Gb:maj", circshift(major_chord, 6),
+    "Bb:min", circshift(minor_chord, 10),
+    "Db:maj", circshift(major_chord, 1),
+    "F:min", circshift(minor_chord, 5),
+    "Ab:7", circshift(seventh_chord, 8),
+    "Ab:maj", circshift(major_chord, 8),
+    "C:min", circshift(minor_chord, 0),
+    "Eb:7", circshift(seventh_chord, 3),
+    "Eb:maj", circshift(major_chord, 3),
+    "G:min", circshift(minor_chord, 7),
+    "Bb:7", circshift(seventh_chord, 10),
+    "Bb:maj", circshift(major_chord, 10),
+    "D:min", circshift(minor_chord, 2),
+    "F:7", circshift(seventh_chord, 5),
+    "F:maj", circshift(major_chord, 5),
+    "A:min", circshift(minor_chord, 9),
+    "C:7", circshift(seventh_chord, 0),
+    "C:maj", circshift(major_chord, 0),
+    "E:min", circshift(minor_chord, 4),
+    "G:7", circshift(seventh_chord, 7),
+    "G:maj", circshift(major_chord, 7),
+    "B:min", circshift(minor_chord, 11),
+    "D:7", circshift(seventh_chord, 2),
+    "D:maj", circshift(major_chord, 2),
+    "F#:min", circshift(minor_chord, 6),
+    "A:7", circshift(seventh_chord, 9),
+    "A:maj", circshift(major_chord, 9),
+    "C#:min", circshift(minor_chord, 1),
+    "E:7", circshift(seventh_chord, 4),
+    "E:maj", circshift(major_chord, 4),
+    "G#:min", circshift(minor_chord, 8),
+    "B:7", circshift(seventh_chord, 11),
+    "B:maj", circshift(major_chord, 11),
+    "D#:min", circshift(minor_chord, 3)
+  )
+
+
+outlier_s <-
+  get_tidy_audio_analysis("1FL7eUG80aeUeyMO2N4btN") |>
+  compmus_align(sections, segments) |>
+  select(sections) |>
+  unnest(sections) |>
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      )
+  )
+
+outlier_s |> 
+  compmus_match_pitch_template(
+    chord_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) |>
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(title = "'Mission: Impossible Theme' by Michael Giacchino", x = "Time (s)", y = "")
+
+normal_s <-
+  get_tidy_audio_analysis("7aVRZwGYPypqF7AMN0pwCG") |>
+  compmus_align(sections, segments) |>
+  select(sections) |>
+  unnest(sections) |>
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      )
+  )
+
+normal_s |> 
+  compmus_match_pitch_template(
+    chord_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) |>
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(title = "'Pelagia's Song", x = "Time (s)", y = "")
+
+```
+
+------
+
+**Visualization**
+
+A chordogram is a type of visualization that represents the chords of a piece of music as a sequence of vertical bars. Each bar corresponds to a chord, and its height indicates the relative frequency or duration of that chord. The width of each bar is proportional to the duration of the chord it represents. Each chord is typically represented as a color or a shape, and the bars are arranged in chronological order, from left to right.
+
+**Why this plot**
+
+Chordograms can be used to visualize the harmonic structure of a piece of music, which is an important aspect of its emotional content. The chords of a piece of music can convey a wide range of emotions, from happiness and joy to sadness and melancholy. By visualizing the chords of a piece of music, we can get a sense of its overall emotional content and how it changes over time.
+
+**Emotion Within**
+
+The outlier song in the "Iconic Soundtracks" playlist is represented by a chordogram with a lot of variation in chord types, indicating a diverse harmonic structure. This suggests that the song has a lot of emotional complexity and may evoke a range of feelings in the listener. The representative song, on the other hand, has a simpler harmonic structure with fewer chord types, indicating a more straightforward emotional content. The difference between the two chordograms may reflect the different ways in which the two songs evoke emotions. The outlier song may be more subtle and nuanced in its emotional content, while the representative song may be more direct and immediate in its emotional impact. Overall, the chordograms help to convey the emotional content of the songs in a visual and intuitive way, making it easier for listeners to understand and connect with the music.
+
+
+### Chordograms of the classical songs show that the emotional diversity goes from more emotionally intense or conflicted to emotionally grounded and resolved {data-commentary-width=650}
+
+
+```{r}
+circshift <- function(v, n) {
+  if (n == 0) v else c(tail(v, n), head(v, -n))
+}
+
+#      C     C#    D     Eb    E     F     F#    G     Ab    A     Bb    B
+major_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    0,    0)
+minor_chord <-
+  c(   1,    0,    0,    1,    0,    0,    0,    1,    0,    0,    0,    0)
+seventh_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    1,    0)
+
+major_key <-
+  c(6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
+minor_key <-
+  c(6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
+
+chord_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:7", circshift(seventh_chord, 6),
+    "Gb:maj", circshift(major_chord, 6),
+    "Bb:min", circshift(minor_chord, 10),
+    "Db:maj", circshift(major_chord, 1),
+    "F:min", circshift(minor_chord, 5),
+    "Ab:7", circshift(seventh_chord, 8),
+    "Ab:maj", circshift(major_chord, 8),
+    "C:min", circshift(minor_chord, 0),
+    "Eb:7", circshift(seventh_chord, 3),
+    "Eb:maj", circshift(major_chord, 3),
+    "G:min", circshift(minor_chord, 7),
+    "Bb:7", circshift(seventh_chord, 10),
+    "Bb:maj", circshift(major_chord, 10),
+    "D:min", circshift(minor_chord, 2),
+    "F:7", circshift(seventh_chord, 5),
+    "F:maj", circshift(major_chord, 5),
+    "A:min", circshift(minor_chord, 9),
+    "C:7", circshift(seventh_chord, 0),
+    "C:maj", circshift(major_chord, 0),
+    "E:min", circshift(minor_chord, 4),
+    "G:7", circshift(seventh_chord, 7),
+    "G:maj", circshift(major_chord, 7),
+    "B:min", circshift(minor_chord, 11),
+    "D:7", circshift(seventh_chord, 2),
+    "D:maj", circshift(major_chord, 2),
+    "F#:min", circshift(minor_chord, 6),
+    "A:7", circshift(seventh_chord, 9),
+    "A:maj", circshift(major_chord, 9),
+    "C#:min", circshift(minor_chord, 1),
+    "E:7", circshift(seventh_chord, 4),
+    "E:maj", circshift(major_chord, 4),
+    "G#:min", circshift(minor_chord, 8),
+    "B:7", circshift(seventh_chord, 11),
+    "B:maj", circshift(major_chord, 11),
+    "D#:min", circshift(minor_chord, 3)
+  )
+
+
+outlier_c <-
+  get_tidy_audio_analysis("1bTXAKwE2Hztv13xTAhMQB") |>
+  compmus_align(sections, segments) |>
+  select(sections) |>
+  unnest(sections) |>
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      )
+  )
+
+outlier_c |> 
+  compmus_match_pitch_template(
+    chord_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) |>
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(title = "'Solomon HWV 67 / Act 3", x = "Time (s)", y = "")
+
+normal_c <-
+  get_tidy_audio_analysis("2Cc5z5swQrDqZiyCkZ0TnF") |>
+  compmus_align(sections, segments) |>
+  select(sections) |>
+  unnest(sections) |>
+  mutate(
+    pitches =
+      map(segments,
+          compmus_summarise, pitches,
+          method = "mean", norm = "manhattan"
+      )
+  )
+
+normal_c |> 
+  compmus_match_pitch_template(
+    chord_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) |>
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(title = "'String Quartet: I.", x = "Time (s)", y = "")
+
+```
+
+-------------
+
+**Emotion Within**
+
+Comparing an outlier chordogram and a representative song chordogram can give you an idea of the range and distribution of emotional content within a playlist. An outlier chordogram typically represents a song that has a distinct emotional quality that is different from the majority of the other songs in the playlist. This can be helpful in identifying the presence of certain emotional themes or moods that may not be as prevalent in the other songs.
+
+On the other hand, a representative song chordogram can give you an idea of the average emotional content of the playlist. This can help you to identify the overall emotional tone or mood of the playlist, as well as any common emotional themes that are present throughout the songs.
+
+In the "Classical Essentials" playlist, the chordograms show the emotional content of two different songs: an outlier and a representative track. By analyzing the chord progressions of these songs, we can see how they convey different emotional states and how they fit within the overall emotional content of the playlist.
+
+For example, if we compare the outlier track to the representative track, we might notice that the outlier track has a more dissonant and tense harmonic structure, whereas the representative track has a more consonant and stable harmonic structure. This might suggest that the outlier track is more emotionally intense or conflicted, while the representative track is more emotionally grounded or resolved.
+
+Overall, by analyzing the chordograms of the songs in the "Classical Essentials" playlist, we can gain a deeper understanding of the emotional content of the music and how it is used to convey different emotional states and themes. We also gain a better understanding of the emotional diversity within the playlist, as well as any patterns or trends in the emotional content of the songs. This can be useful in determining whether the playlist is well-balanced in terms of emotional content, or if it tends to be skewed towards certain emotional themes or moods. Here, the emotional diversity goes from more emotionally intense or conflicted to emotionally grounded and resolved. 
+
+Keygrams {.storyboard data-icon="fa-signal"}
+======================================================
+
+### Keygrams show that soundtracks are sadder than classical songs {data-commentary-width=650}
+
+
+```{r}
+
+keys <- playlists %>% 
+  group_by(category, key_mode) %>% 
+  summarise(n = n()) %>% 
+  mutate(freq = n / sum(n)) %>% 
+  ungroup()
+
+keys_freq_plot <- ggplot(keys, aes(key_mode, freq, fill = category, 
+                                       text = paste("Playlist: ", category, "<br>",
+                                                    "Key: ", key_mode, "<br>",
+                                                    "Percentage: ", freq, "<br>",
+                                                    "Actual frequency:", n))) +
+  geom_col(position = position_dodge(preserve = "single", width = 0.8), alpha = 0.8, width = 1) +
+  scale_fill_manual(values = c("Classical" = "#86C6D9", "Soundtracks" = "#E9D2B7")) +
+  labs(title = "Key Distribution", x = "Key", y = "Frequency", fill = "Playlist", 
+       fontface = "bold", angle = 90, size = 2) +
+  theme_bw() +
+  theme(legend.position = c(0.76, 0.23), axis.text.x = element_text(angle = 90), 
+        axis.ticks.x = element_blank(), axis.ticks.y = element_blank())
+
+
+keys_freq_plot <- ggplotly(keys_freq_plot, tooltip = "text")
+
+keys_freq_plot
+
+
+```
+
+------
+
+**Visualization**
+
+A frequency key plot is a graphical representation of the distribution of musical keys within a playlist or a group of songs. It shows the frequency of occurrence of each key in the songs within the playlist or group. The plot typically displays the keys on the x-axis and the frequency of occurrence on the y-axis. The frequency of occurrence can be represented by the number of songs that use a particular key or the percentage of songs that use that key.
+
+**Why this plot**
+
+The choice of musical key can play a crucial role in determining the emotional content of a piece of music. For instance, music written in a major key is generally perceived as upbeat and happy, while music in a minor key is often associated with sadness or melancholy.
+
+By visualizing the frequency of occurrence of each key in a playlist or group of songs, a frequency key plot can help to identify patterns in the emotional content of the playlist. For instance, a playlist that contains many songs in major keys might be perceived as more upbeat and positive, while a playlist that contains many songs in minor keys might be perceived as more melancholic or sad.
+
+**Emotion Within**
+
+Looking at the plot, we can see that the "Iconic Soundtracks" playlist has a relatively high percentage of songs in minor keys (especially A minor, E minor and G minor), while the "Classical Essentials" playlist has a more even distribution of keys, with a slight preference for major keys.
+
+These differences in key distribution can tell us something about the emotional content of each playlist. Minor keys are often associated with sadness, melancholy, or introspection, while major keys are often associated with happiness, excitement, or celebration. Therefore, the high percentage of minor keys in the "iconic soundtracks" playlist suggests that this playlist may have a more somber or emotional tone, while the more even distribution of keys in the "classical essentials" playlist suggests a more balanced emotional content.
+
+When comparing the two playlists, we can also see that the "Iconic Soundtracks" playlist has a higher percentage of minor keys overall than the "Classical Essentials" playlist, which may reinforce the idea that it has a more somber or emotional tone.
+
+### Key plot shows that a lot of soundtracks are played in minor keys  {data-commentary-width=650}
+
+
+```{r}
+
+keys <- playlists %>% 
+  group_by(category, key_mode) %>% 
+  summarise(n = n()) %>% 
+  mutate(freq = n / sum(n)) %>% 
+  ungroup()
+
+keys_plot_playlist <- ggplot(keys, aes(key_mode, n, fill = category, 
+                                  text = paste("Playlist: ", category, "<br>",
+                                               "Key: ", key_mode, "<br>",
+                                               "Actual frequency:", n))) +
+  geom_col(width = 1) +
+  scale_fill_manual(values = c("Classical" = "#86C6D9", "Soundtracks" = "#E9D2B7")) +
+  labs(title = "Key Distribution", x = "Key", y = "Frequency", fill = "Playlist", 
+       fontface = "bold", angle = 90, size = 2) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90), axis.ticks.x = element_blank(), 
+        axis.ticks.y = element_blank(), strip.background = element_rect(fill= "#ffcccb")) +
+  facet_wrap(~ category)
+
+keys_plot_playlist <- ggplotly(keys_plot_playlist, tooltip = "text")
+
+keys_plot_playlist
+
+
+```
+
+-------------
+
+**Visualisation**
+
+These key frequency plots show the distribution of musical keys in a the playlists. Each column in the plot represents a different key, with the height of the column representing the number of songs in the playlist that are written in that key.
+
+**Why this plot**
+
+This type of plot can be used to analyze the emotional content of a dataset of songs, as different musical keys are often associated with different emotions. For example, major keys are often associated with happiness, excitement, or celebration, while minor keys are often associated with sadness, melancholy, or introspection. In the plots, there can be seen two key plots, one for each playlist: "Iconic Soundtracks" and "Classical Essentials". Each plot shows the distribution of keys in the corresponding playlist, with columns grouped by major and minor modes.
+
+**Emotion Within**
+ 
+This plot shows the same as the frequency plot given earlier, but now we can see precisely how many songs are played in a certain key.
+Looking at the plots, we can see that the "Iconic Soundtracks" playlist has a higher number of songs in minor keys (especially A minor, E minor and G minor), while the "Classical Essentials" playlist has a more even distribution of keys, with a slight preference for major keys. This suggests that the "Iconic Soundtracks" playlist may have a more somber or emotional tone, while the "Classical Essentials" playlist may have a more balanced emotional content.
+
+When comparing the two playlists, we can see that the "Iconic Soundtracks" playlist has a higher number of songs in minor keys overall than the "Classical Essentials" playlist. This reinforces the idea that the "Iconic Soundtracks" playlist may have a more somber or emotional tone compared to the "Classical Essentials" playlist.
+
+Tempograms {.storyboard data-icon="fa-signal"}
+======================================================
+
+### Sadness and anger can come together in the tempo of soundtracks {data-commentary-width=650}
+
+```{r}
+## Soundtrack songs outlier and representative
+
+not_classical <- get_tidy_audio_analysis("4fDodwdZ1LBDL2I2WCnUMY")
+outlier_classical <- get_tidy_audio_analysis("1bTXAKwE2Hztv13xTAhMQB")
+
+not_soundtracks <- get_tidy_audio_analysis("2Cc5z5swQrDqZiyCkZ0TnF")
+outlier_soudtracks <- get_tidy_audio_analysis("1FL7eUG80aeUeyMO2N4btN")
+
+
+p3_interact <- not_soundtracks |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic()
+
+p4_interact <- outlier_soudtracks |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic()
+
+p3_interactive <- ggplotly(p3_interact)
+p4_interactive <- ggplotly(p4_interact)
+
+plot_combined1 <- subplot(p4_interactive, p3_interactive, nrows = 1)
+# convert the combined plot to ggplot
+ggplotly(plot_combined1) %>%
+  # add x and y axis labels
+  layout(xaxis = list(title = "Time (s)"), yaxis = list(title = "Tempo (BPM)")) %>%
+  # add a title
+  layout(title = "Comparison of the Songs Mission and Pelagia's Song")
+
+
+```
+
+---
+
+**Visualization**
+
+A tempogram is a visualization of the tempo (or beat) of a piece of music over time. It is similar to a spectrogram, but instead of displaying frequency content over time, it displays tempo over time. The y-axis represents tempo in beats per minute (BPM), and the x-axis represents time. Each pixel in the tempogram represents a short segment of the audio, and its color represents the strength or power of the tempo at that moment. The brighter the color, the stronger the tempo is in that segment.
+
+**Why this plot**
+
+A tempogram plot can show the emotional content of a playlist by revealing the changes in tempo and rhythm that occur within the songs. Emotions can be conveyed through music by manipulating these musical elements. For example, fast and upbeat tempos can convey excitement or happiness, while slow and somber tempos can convey sadness or melancholy. Therefore, analyzing the tempogram can help us identify the emotional content of a song and how it contributes to the overall emotional content of a playlist.
+
+**Emotion within the plot**
+
+In the plots, the "Iconic Soundtracks" playlist is being analyzed by displaying the tempograms of two different songs: the representative song and the outlier song.The outlier song, "Mission: Impossible Theme" (the left tempogram), has a mostly consistent tempo throughout the piece, with a slight increase in tempo towards the end. The representative song, "Pelagia's Song" (the right tempogram), has a more varied tempo, with several changes throughout the piece.
+
+The difference in tempo between the two songs can evoke different emotions. The consistent tempo of "Mission: Impossible Theme" may evoke a sense of tranquility or calmness, while the varied tempo of "Pelagia's Song" may create a sense of tension or urgency. This is different from what one might expect, as the representative song is typically associated with a feeling of sadness, whereas the "Mission: Impossible Theme"is known for its energetic and intense tone, conveying a sense of anger and urgency. Overall, comparing the tempograms of the two songs in the "Iconic Soundtracks" playlist can give insight into the emotional content of the playlist and the songs within it.
+
+
+### Even the tempo feels sadder for classical songs {data-commentary-width=650}
+
+```{r}
+
+## Classical songs outlier and representative
+
+p1_interact <- not_classical |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic()
+
+p2_interact <- outlier_classical |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic()
+
+p1_interactive <- ggplotly(p1_interact)
+p2_interactive <- ggplotly(p2_interact)
+
+plot_combined2 <- subplot(p2_interactive, p1_interactive, nrows = 1)
+
+# convert the combined plot to ggplot
+ggplotly(plot_combined2) %>%
+  # add x and y axis labels
+  layout(xaxis = list(title = "Time (s)"), yaxis = list(title = "Tempo (BPM)")) %>%
+  # add a title
+  layout(title = "Comparison of the songs Solomon HWV 67 String Quartet")
+
+```
+
+---
+
+**Emotion within the plot**
+
+Showing the tempogram of an outlier and representative song in the "Classical Essentials" playlist can provide insight into the emotional content of the playlist. In the case of the classical songs outlier and representative, we can see how the emotional content is expressed through the tempo of the music. The representative song, "String Quartet", features a consistent and steady tempo with a slight increase towards the end, typically associated with a feeling of sadness. On the other hand, the outlier song, "Solomon HWV 67", features a more erratic tempo with significant fluctuations in speed, conveying a sense of  instabillity and potential choas in the emotional content. This is what we would have expected the tempograms to look like. Overall, the difference in tempo between the two songs emphasizes the importance of tempo in conveying the emotional content of a piece of music.
+
+### The tempograms shows that the playlist come together in emotional content with their respective outliers {data-commentary-width=650}
+
+```{r}
+# ALL four
+
+
+p1 <- not_classical |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'String Quartet: I.") +
+  theme_classic()
+
+p2 <- outlier_classical |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Solomon HWV 67 / Act 3") +
+  theme_classic()
+
+
+p3 <- not_soundtracks |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Pelagia's Song") +
+  theme_classic()
+
+p4 <- outlier_soudtracks |>
+  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
+  ggplot(aes(x = time, y = bpm, fill = power)) +
+  geom_raster() +
+  scale_fill_viridis_c(guide = "none") +
+  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Mission: Impossible Theme") +
+  theme_classic()
+
+grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+```
+
+---
+
+**Conclusion**
+
+Comparing the emotional content of the "Iconic Soundtracks" and "Classical Essentials" playlists can be done by analyzing the tempograms of the representative songs in each playlist. The representative song of the "Iconic Soundtracks" playlist, "Pelagia's Song", features a more varied tempo, conveying a sense of tension and urgency. In contrast, the representative song of the "Classical Essentials" playlist, "String Quartet", features a consistent and steady tempo, typically associated with a feeling of sadness. These differences suggest that the emotional content of the "Iconic Soundtracks" playlist is more dynamic and varied, while the emotional content of the "Classical Essentials" playlist is more subdued and melancholic.
+
+Additionally, it is worth noting that the outlier songs in both playlists, "Mission: Impossible Theme" and "Solomon HWV 67", have similar tempograms, with a consistent tempo throughout most of the piece and a slight increase towards the end. This similarity suggests that there may be some common emotional elements in both playlists, such as a sense of urgency or tension, but the overall emotional content of the two playlists is still distinct due to the differences in the representative songs' tempograms.
+
+Clusters {.storyboard data-icon="fa-signal"}
+======================================================
+
+### Dendogram showing emotional features clusterd and overlap between the playlists {data-commentary-width=650}
+
+```{r}
+
+
+
+# Get playlist data
+classical_features_analysis <- get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0") %>% add_audio_analysis()
+soundtrack_features_analysis <- get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it") %>% add_audio_analysis()
+
+# Combine and clean up playlist data
+playlists_cut <- bind_rows(
+  classical_features_analysis %>% mutate(category = "Classical") %>% slice_tail(n = 26),
+  soundtrack_features_analysis %>% mutate(category = "Soundtracks") %>% slice_head(n = 25)
+) %>% 
+  distinct(track.name, .keep_all = TRUE) %>% # remove duplicate songs
+  mutate(track.name = str_sub(track.name, 1, 10)) %>% # truncate track names
+  distinct(track.name, .keep_all = TRUE) # remove remaining duplicates
+
+# Prepare recipe for clustering
+playlist_juice <- recipe(
+  track.name ~
+    danceability +
+    energy +
+    loudness +
+    speechiness +
+    acousticness +
+    instrumentalness +
+    liveness +
+    valence +
+    tempo,
+  data = playlists_cut
+) %>%
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors()) %>% 
+  prep(data = playlists_cut %>% mutate(track.name = str_trunc(track.name, 20))) %>% # truncate track names
+  juice() %>%
+  column_to_rownames("track.name")
+
+# Calculate distance matrix and hierarchical clustering
+playlist_dist <- dist(playlist_juice, method = "euclidean")
+data_for_playlists_clustering <- playlist_dist %>% 
+  hclust(method = "average") %>% # average for a balanced tree!
+  dendro_data() 
+
+# Join playlist names to labels for plotting
+playlist_data_for_join <- playlists_cut %>%
+  select(track.name, playlist_name) %>%
+  mutate(label = str_trunc(track.name, 20))
+
+data_for_playlists_clustering$labels <- data_for_playlists_clustering$labels %>% 
+  left_join(playlist_data_for_join) %>%
+  mutate(label = factor(label))
+
+# Plot dendrogram with playlist names and colors
+data_for_playlists_clustering %>%
+  ggdendrogram() +
+  geom_text(data = label(data_for_playlists_clustering), aes(x, y, 
+                                                             label=label, 
+                                                             hjust=0, 
+                                                             colour=playlist_name), size=3) +
+  coord_flip() + 
+  scale_y_reverse(expand=c(0.2, 0)) +
+  scale_color_manual(values = c("#5b9dbf", "#A30000")) +
+  theme(axis.line.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank(),
+        panel.background=element_rect(fill="white"),
+        panel.grid=element_blank()) +
+  labs(title = "Playlist Clustering") +
+  guides(
+    colour = guide_legend(
+      title = "Playlist"
+    )
+  )
+
+
+```
+
+---
+
+**Visualization**
+
+A dendrogram is a type of diagram that shows the hierarchical relationship between different elements in a dataset. The plot consists of a tree-like structure where the branches represent the similarities between different data points or groups. In this case, the dendrogram shows the clustering of songs in the "Iconic Soundtracks" and "Classical Essentials" playlists based on their audio features.
+
+**Why this plot**
+
+The emotional content of music is often conveyed through its audio features such as tempo, loudness, and valence. By clustering the songs in the playlists based on these features, the dendrogram provides a visualization of the emotional content of the playlists. In other words, songs that have similar emotional content are grouped together in the dendrogram.
+
+**Emotion within the plot**
+
+The emotion within the playlists can be seen through the clustering of the songs in the dendrogram. The "Iconic Soundtracks" playlist contains songs from various movie soundtracks, and the dendrogram shows that the songs are clustered together based on their emotional content.
+
+On the other hand, the "Classical Essentials" playlist contains classical music, and the dendrogram shows that the songs are clustered based on their emotional content as well. The songs that are more upbeat and energetic are clustered together, while the songs that are more mellow and relaxing are clustered separately.
+
+The dendrogram also reveals that some songs from the "Iconic Soundtracks" playlist, such as 'Earth', are clustered together with songs from the "Classical Essentials" playlist, indicating that they share similar emotional content. Similarly, the song 'Kol Nidrei' from the "Classical Essentials" playlist is clustered together with some songs from the "Iconic Soundtracks" playlist.
+
+Overall, the dendrogram provides a useful visualization of the emotional content of the playlists by showing how the songs are clustered based on their audio features. This can be helpful for understanding the mood and tone of the playlists and for creating playlists with a particular emotional content.
+
+
+### Soundtracks have different emotional contents {data-commentary-width=650}
 
 ```{r}
 
@@ -127,15 +1494,19 @@ heatmaply(
 
 ---
 
-Here a heatmap and dendrogram based on the audio features of 20 songs from the "Classical Essentials" playlist are visualized. The heatmap displays the audio features of 20 songs from the Iconic Soundtracks playlist, where each row represents a song, and each column represents an audio feature. The colors in the heatmap correspond to the values of each audio feature, where yellow indicates higher values and blue indicates lower values.
+**Visualization**
 
-The dendrogram illustrates the results of hierarchical clustering of the songs based on their audio features. The height of the dendrogram branches indicates the degree of similarity between songs.
+The given plot is a heatmap with a dendrogram, which shows the hierarchical clustering of the audio features of 20 songs from the "Iconic Soundtracks" playlist. The dendrogram on the left shows how the songs are grouped based on their audio features, while the heatmap on the right represents the magnitude of each audio feature for each song, with darker shades indicating higher values and lighter shades indicating lower values.
 
-Notable patterns found in the dendrogram show that the 20 songs can be clustered into two main groups. The first group consists of seven songs that are closely related to each other, forming a cluster on the right side of the dendrogram. The second group consists of 13 songs, which are further divided into two subclusters on the left side of the dendrogram.
+**Why this plot**
 
-Among the audio features, loudness seems to be the most useful feature for clustering, as songs with similar loudness values are clustered together. On the other hand, features such as valence and speechiness appear to be less useful for clustering, as there are no clear patterns of similarity or dissimilarity based on these features.
+This plot can show the emotion within the playlist by highlighting the differences and similarities between the audio features of the songs. Certain audio features, such as energy and valence, can be used to measure the emotional content of a song. Energy reflects the overall intensity and activity level of the song, while valence reflects its positivity or negativity. By clustering the songs based on these features, we can see how they are grouped according to their emotional content.
 
-### Notable patters in Classical Essentials found by hierarchical clustering
+**Emotion within the plot**
+
+In the given plot, we can see that the songs are clustered into two main groups based on their audio features. The first group, consisting of three songs such as "Comptine d’un autre été : L’Après-midi" and "He's a pirate", has higher energy and valence values, indicating a more positive and uplifting emotional tone. The second group, consisting of songs such as "The Godfather Waltz" and "Time", has lower energy and valence values, indicating a more somber and melancholic emotional tone. The heatmap allows us to see the specific differences in audio features between the songs, highlighting how certain features contribute to the emotional content of the playlist.
+
+### Classical songs have somewhat the same emotional content {data-commentary-width=650}
 
 ```{r}
 
@@ -153,9 +1524,9 @@ get_pr <- function(fit) {
     group_by(Truth) |> mutate(recall = Freq / sum(Freq)) |> 
     ungroup() |> filter(Prediction == Truth) |> 
     select(class = Prediction, precision, recall)
-} 
+}  
 
-classicals <-
+classicalsss <-
   get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0") |>
   slice(1:20) |>
   add_audio_analysis() |>
@@ -177,7 +1548,7 @@ classicals <-
   mutate_at(vars(pitches, timbre), map, bind_rows) |>
   unnest(cols = c(pitches, timbre))
 
-classicals_juice <-
+classicalsss_juice <-
   recipe(
     track.name ~
       danceability +
@@ -195,677 +1566,85 @@ classicals_juice <-
       `G#|Ab` + A + `A#|Bb` + B +
       c01 + c02 + c03 + c04 + c05 + c06 +
       c07 + c08 + c09 + c10 + c11 + c12,
-    data = classicals
+    data = classicalsss
   ) |>
   step_center(all_predictors()) |>
   step_scale(all_predictors()) |> 
   # step_range(all_predictors()) |> 
-  prep(classicals |> mutate(track.name = str_trunc(track.name, 20))) |>
+  prep(classicalsss |> mutate(track.name = str_trunc(track.name, 20))) |>
   juice() |>
   column_to_rownames("track.name")
 
 
-classicals_dist <- dist(classicals_juice, method = "euclidean")
+classicalsss_dist <- dist(classicalsss_juice, method = "euclidean")
 
-classicals_dist |> 
+classicalsss_dist |> 
   hclust(method = "complete") |> # Try single, average, and complete.
   dendro_data() |>
   ggdendrogram()
 
 heatmaply(
-  classicals_juice,
+  classicalsss_juice,
   hclustfun = hclust,
   hclust_method = "average",  # Change for single, average, or complete linkage.
   dist_method = "euclidean",
-  main = "Heatmap of Audio Features for 20 songs of Classical Essentails"
+  main = "Heatmap of Audio Features for 20 songs of Iconice Soundtracks playlist"
 )
 
-
 ```
 
 ---
 
-Here a heatmap and dendrogram based on the audio features of 20 songs from the "Classical Essentials" playlist are visualized. The heatmap displays a color-coded grid where rows represent the songs and columns represent the audio features, such as danceability, energy, and tempo. Warmer colors indicate higher values while cooler colors represent lower values. The dendrogram is a tree-like diagram that shows the hierarchical relationships among the songs based on their audio feature similarities.
+**Emotion within the plot**
 
-Looking at the dendrogram, we can observe that the songs form several distinct clusters, with some clusters being more closely related to each other than others. One notable pattern is that songs with similar tempos tend to cluster together. Additionally, songs with similar pitches also tend to group together. In contrast, the features related to the timbre of the music do not seem to have a strong effect on the clustering.
+This plot shows the emotion within the "Classical Essentials" playlist as different audio features can be associated with specific emotions. For instance, danceability, energy, and tempo can be associated with excitement and joy, while acousticness and instrumentalness can be associated with calmness or melancholy. By analyzing the heatmap and dendrogram, we can observe the differences in emotion between the songs. For instance, songs clustered together based on their audio features' similarity may have a similar emotional tone. We can also observe which audio features contribute to a particular emotion, e.g., songs with high energy, danceability, and loudness are more likely to evoke excitement and joy.
 
-Regarding the heatmap, we can see that some features, such as loudness, energy, and danceability, show a relatively high degree of variability across the songs, while others, such as speechiness and instrumentalness, show little variability. Interestingly, the heatmap also shows that some songs have a distinctive profile of high or low values across multiple features, indicating that some songs share specific musical characteristics.
+The heatmap with dendrogram of the "Classical Essentials" playlist shows that the audio features of the songs have some variation, but the overall color of the plot is quite similar. This may suggest that the emotional content of the playlist is fairly consistent. However, there is one outlier song, "Scheherazade: The Tale of the Kalendar Prince," which has a much higher "liveness" value compared to the other songs in the playlist. This high "liveness" value may indicate a sense of energy, enthusiasm, and spontaneity in the performance, which can evoke positive emotions in listeners such as happiness, excitement, or euphoria.
 
-Overall, the dendrogram and heatmap provide a useful visualization of the relationships among the songs based on their audio features. It suggests that some features, such as tempo and pitch, are more useful than others for clustering classical music songs based on their audio features.
 
-### What are the differences in tempograms between an outlier and a song that is representative of the rest of the playlist
-
-```{r}
-library(gridExtra)
-
-not_classical <- get_tidy_audio_analysis("4fDodwdZ1LBDL2I2WCnUMY")
-outlier_classical <- get_tidy_audio_analysis("1CDEWKmyRTPWWa7uIKVSU4")
-
-not_soundtracks <- get_tidy_audio_analysis("1CxT3WZkSuEAxPOKAPzDDl")
-outlier_soudtracks <- get_tidy_audio_analysis("5FRGTGPZ7uA6JaLAH55PVV")
-
-
-p1 <- not_classical |>
-  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
-  ggplot(aes(x = time, y = bpm, fill = power)) +
-  geom_raster() +
-  scale_fill_viridis_c(guide = "none") +
-  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Tsar Saltan, Op. 57: Flight of the Bumblebee' by André Previn") +
-  theme_classic()
-
-p2 <- outlier_classical |>
-  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
-  ggplot(aes(x = time, y = bpm, fill = power)) +
-  geom_raster() +
-  scale_fill_viridis_c(guide = "none") +
-  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Job, a Masque for Dancing' by Ralph  Vaughan Williams") +
-  theme_classic()
-
-p3 <- not_soundtracks |>
-  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
-  ggplot(aes(x = time, y = bpm, fill = power)) +
-  geom_raster() +
-  scale_fill_viridis_c(guide = "none") +
-  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'End Titles' by Rachel Portman") +
-  theme_classic()
-
-p4 <- outlier_soudtracks |>
-  tempogram(window_size = 8, hop_size = 1, cyclic = TRUE) |>
-  ggplot(aes(x = time, y = bpm, fill = power)) +
-  geom_raster() +
-  scale_fill_viridis_c(guide = "none") +
-  labs(x = "Time (s)", y = "Tempo (BPM)", title = "'Brooks was here' by Thomas Newman") +
-  theme_classic()
-
-# Create plotly objects from the ggplot objects
-p1_ly <- ggplotly(p1)
-p2_ly <- ggplotly(p2)
-p3_ly <- ggplotly(p3)
-p4_ly <- ggplotly(p4)
-
-# Arrange the plots on a grid
-grid <- subplot(p1_ly, p2_ly, p3_ly, p4_ly, nrows = 2, margin = 0.05)
-
-# Display the grid
-grid
-
-```
-
----
-
-These four plots represent two different playlists: Iconic Soundtracks and Classical Essentials. The tempograms are a way to visualize the tempo of a piece of music over time. 
-
-The first plot shows the tempo of 'Job, a Masque for Dancing' by Ralph Vaughan Williams, an outlier from the Classical Essentials playlist. The second plot shows the tempo of 'Tsar Saltan, Op. 57: Flight of the Bumblebee' by André Previn, a piece from the Classical Essentials playlist. Comparing the two Classical Essentials plots, we can see that 'Job, a Masque for Dancing' has a much more variable tempo than 'Tsar Saltan, Op. 57: Flight of the Bumblebee', with many more peaks and valleys in the tempo curve. This suggests that 'Job, a Masque for Dancing' has a more complex rhythmic structure than 'Tsar Saltan, Op. 57: Flight of the Bumblebee'.
-
-The third plot shows the tempo of 'End Titles' by Rachel Portman, a representative example of the rest of the Iconic Soundtracks playlist. The fourth plot shows the tempo of 'Brooks was here' by Thomas Newman, an outlier from the Iconic Soundtracks playlist.'End Titles' has a relatively stable and consistent tempo throughout the entire track. On the other hand, 'Brooks was here', the outlier track, has a more variable tempo, with frequent changes in tempo throughout the track. Additionally, the tempo of 'Brooks was here' generally tends to be slower than the tempo of 'End Titles'.
-
-Comparing 'End Titles' from the Iconic Soundtracks playlist to 'Tsar Saltan, Op. 57: Flight of the Bumblebee' from the Classical Essentials playlist, we can see that 'End Titles' has a more consistent and stable tempo than 'Tsar Saltan, Op. 57: Flight of the Bumblebee', which has more fluctuations in tempo. This difference may be due to the fact that the Iconic Soundtracks playlist includes music from a wider range of genres and styles than the Classical Essentials playlist, which may have a more narrow focus on classical music.
-
-### What are the differences in keygrams between an outlier and a song that is representative of the rest of the playlist
-
-```{r, figures-side, fig.show="hold", out.width="50%"}
-
-
-
-par(mar = c(4, 4, .1, .1))
-
-circshift <- function(v, n) {
-  if (n == 0) v else c(tail(v, n), head(v, -n))
-}
-
-#      C     C#    D     Eb    E     F     F#    G     Ab    A     Bb    B
-major_chord <-
-  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    0,    0)
-minor_chord <-
-  c(   1,    0,    0,    1,    0,    0,    0,    1,    0,    0,    0,    0)
-seventh_chord <-
-  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    1,    0)
-
-major_key <-
-  c(6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
-minor_key <-
-  c(6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
-
-chord_templates <-
-  tribble(
-    ~name, ~template,
-    "Gb:7", circshift(seventh_chord, 6),
-    "Gb:maj", circshift(major_chord, 6),
-    "Bb:min", circshift(minor_chord, 10),
-    "Db:maj", circshift(major_chord, 1),
-    "F:min", circshift(minor_chord, 5),
-    "Ab:7", circshift(seventh_chord, 8),
-    "Ab:maj", circshift(major_chord, 8),
-    "C:min", circshift(minor_chord, 0),
-    "Eb:7", circshift(seventh_chord, 3),
-    "Eb:maj", circshift(major_chord, 3),
-    "G:min", circshift(minor_chord, 7),
-    "Bb:7", circshift(seventh_chord, 10),
-    "Bb:maj", circshift(major_chord, 10),
-    "D:min", circshift(minor_chord, 2),
-    "F:7", circshift(seventh_chord, 5),
-    "F:maj", circshift(major_chord, 5),
-    "A:min", circshift(minor_chord, 9),
-    "C:7", circshift(seventh_chord, 0),
-    "C:maj", circshift(major_chord, 0),
-    "E:min", circshift(minor_chord, 4),
-    "G:7", circshift(seventh_chord, 7),
-    "G:maj", circshift(major_chord, 7),
-    "B:min", circshift(minor_chord, 11),
-    "D:7", circshift(seventh_chord, 2),
-    "D:maj", circshift(major_chord, 2),
-    "F#:min", circshift(minor_chord, 6),
-    "A:7", circshift(seventh_chord, 9),
-    "A:maj", circshift(major_chord, 9),
-    "C#:min", circshift(minor_chord, 1),
-    "E:7", circshift(seventh_chord, 4),
-    "E:maj", circshift(major_chord, 4),
-    "G#:min", circshift(minor_chord, 8),
-    "B:7", circshift(seventh_chord, 11),
-    "B:maj", circshift(major_chord, 11),
-    "D#:min", circshift(minor_chord, 3)
-  )
-
-key_templates <-
-  tribble(
-    ~name, ~template,
-    "Gb:maj", circshift(major_key, 6),
-    "Bb:min", circshift(minor_key, 10),
-    "Db:maj", circshift(major_key, 1),
-    "F:min", circshift(minor_key, 5),
-    "Ab:maj", circshift(major_key, 8),
-    "C:min", circshift(minor_key, 0),
-    "Eb:maj", circshift(major_key, 3),
-    "G:min", circshift(minor_key, 7),
-    "Bb:maj", circshift(major_key, 10),
-    "D:min", circshift(minor_key, 2),
-    "F:maj", circshift(major_key, 5),
-    "A:min", circshift(minor_key, 9),
-    "C:maj", circshift(major_key, 0),
-    "E:min", circshift(minor_key, 4),
-    "G:maj", circshift(major_key, 7),
-    "B:min", circshift(minor_key, 11),
-    "D:maj", circshift(major_key, 2),
-    "F#:min", circshift(minor_key, 6),
-    "A:maj", circshift(major_key, 9),
-    "C#:min", circshift(minor_key, 1),
-    "E:maj", circshift(major_key, 4),
-    "G#:min", circshift(minor_key, 8),
-    "B:maj", circshift(major_key, 11),
-    "D#:min", circshift(minor_key, 3)
-  )
-
-brooks_was_here <-
-  get_tidy_audio_analysis("5FRGTGPZ7uA6JaLAH55PVV") |>
-  compmus_align(sections, segments) |>
-  select(sections) |>
-  unnest(sections) |>
-  mutate(
-    pitches =
-      map(segments,
-          compmus_summarise, pitches,
-          method = "mean", norm = "manhattan"
-      )
-  )
-
-brooks_was_here |> 
-  compmus_match_pitch_template(
-    chord_templates,         # Change to chord_templates if descired
-    method = "euclidean",  # Try different distance metrics
-    norm = "manhattan"     # Try different norms
-  ) |>
-  ggplot(
-    aes(x = start + duration / 2, width = duration, y = name, fill = d)
-  ) +
-  geom_tile() +
-  scale_fill_viridis_c(guide = "none") +
-  theme_minimal() +
-  labs(title = "'Brooks was here' by Thomas Newman", x = "Time (s)", y = "")
-
-
-end_titles <-
-  get_tidy_audio_analysis("1CxT3WZkSuEAxPOKAPzDDl") |>
-  compmus_align(sections, segments) |>
-  select(sections) |>
-  unnest(sections) |>
-  mutate(
-    pitches =
-      map(segments,
-          compmus_summarise, pitches,
-          method = "mean", norm = "manhattan"
-      )
-  )
-
-end_titles |> 
-  compmus_match_pitch_template(
-    chord_templates,         # Change to chord_templates if descired
-    method = "euclidean",  # Try different distance metrics
-    norm = "manhattan"     # Try different norms
-  ) |>
-  ggplot(
-    aes(x = start + duration / 2, width = duration, y = name, fill = d)
-  ) +
-  geom_tile() +
-  scale_fill_viridis_c(guide = "none") +
-  theme_minimal() +
-  labs(title = "'End Titles' by Rachel Portman", x = "Time (s)", y = "")
-
-
-par(mar = c(4, 4, .1, .1))
- 
-vaughan <-
-  get_tidy_audio_analysis("1CDEWKmyRTPWWa7uIKVSU4") |>
-  compmus_align(sections, segments) |>
-  select(sections) |>
-  unnest(sections) |>
-  mutate(
-    pitches =
-      map(segments,
-          compmus_summarise, pitches,
-          method = "mean", norm = "manhattan"
-      )
-  )
-
-vaughan |> 
-  compmus_match_pitch_template(
-    chord_templates,         # Change to chord_templates if descired
-    method = "euclidean",  # Try different distance metrics
-    norm = "manhattan"     # Try different norms
-  ) |>
-  ggplot(
-    aes(x = start + duration / 2, width = duration, y = name, fill = d)
-  ) +
-  geom_tile() +
-  scale_fill_viridis_c(guide = "none") +
-  theme_minimal() +
-  labs(title = "'Job, a Masque for Dancing' by Ralph  Vaughan Williams", x = "Time (s)", y = "")
-
-
-tsar_saltan <-
-  get_tidy_audio_analysis("4fDodwdZ1LBDL2I2WCnUMY") |>
-  compmus_align(sections, segments) |>
-  select(sections) |>
-  unnest(sections) |>
-  mutate(
-    pitches =
-      map(segments,
-          compmus_summarise, pitches,
-          method = "mean", norm = "manhattan"
-      )
-  )
-
-tsar_saltan |> 
-  compmus_match_pitch_template(
-    chord_templates,         # Change to chord_templates if descired
-    method = "euclidean",  # Try different distance metrics
-    norm = "manhattan"     # Try different norms
-  ) |>
-  ggplot(
-    aes(x = start + duration / 2, width = duration, y = name, fill = d)
-  ) +
-  geom_tile() +
-  scale_fill_viridis_c(guide = "none") +
-  theme_minimal() +
-  labs(title = "'Tsar Saltan, Op. 57: Flight of the Bumblebee' by André Previn", x = "Time (s)", y = "")
-
-
-
-```
-
----
-
-The top two chordograms are two songs from the Iconic Soundtracks playlist, namely "Brooks was here" by Thomas Newman and "End Titles" by Rachel Portman. The chordograms represent the chords used in the songs over time, with the x-axis representing time in seconds and the y-axis representing the different chords. The chords are represented using 1-0 coding for chord templates and the Krumhansl-Kessler key profiles.
-The two chordograms show that the two songs have different chord progressions. "Brooks was here" has more varied and complex chords compared to "End Titles", which has a simpler chord progression. The chordogram for "Brooks was here" has more vertical lines, indicating more chord changes, whereas the chordogram for "End Titles" has more horizontal lines, indicating longer sections with the same chord.
-Overall, the chordograms provide a visual representation of the harmonic structure of the two songs, highlighting differences in chord progression and complexity.
-It is worth noting that "Brooks was here" stands out as an outlier of the Classical Essentials playlist, with a significantly different chord progression compared to the rest of the playlist. "End Titles" serves as a representative example of the typical chord progression in the playlist.
-
-The two chordograms on the bottom are from two songs, 'Tsar Saltan, Op. 57: Flight of the Bumblebee' by André Previn, and 'Job, a Masque for Dancing' by Ralph Vaughan Williams. The chordograms are visual representations of the harmonic structure of the songs, with again time on the x-axis and the chords on the y-axis. The colors of the rectangles represent the strength of each chord based on the Krumhansl-Kessler key profile.
-The two chordograms are significantly different. The chordogram of 'Tsar Saltan, Op. 57: Flight of the Bumblebee' has more consistent coloring and clear harmonic patterns. On the other hand, the chordogram of 'Job, a Masque for Dancing' is more complex, with a wider range of colors and less clear harmonic patterns. This difference is due to the fact that 'Tsar Saltan, Op. 57: Flight of the Bumblebee' is a piece from the Classical Essentials playlist and follows traditional harmonic patterns, while 'Job, a Masque for Dancing' is an outlier from the playlist and has more complex and unpredictable harmonic patterns.  
-
-### What are the differences in audio features of a playlist with movie soundtracks of classical songs
-
-```{r}
-classical <- get_playlist_audio_features("", "37i9dQZF1DWWEJlAGA9gs0")
-soundtracks <- get_playlist_audio_features("", "37i9dQZF1DX1tz6EDao8it")
-
-# add playlist names to the data frames
-classical$playlist <- "Classical Essentials"
-soundtracks$playlist <- "Iconic Soundtracks"
-
-# combine the playlists into one dataframe
-audio_features <- bind_rows(classical, soundtracks)
-
-
-# create a more colorful color scale based on acousticness
-color_scale <- scale_color_gradient(low = "#FEE08B", high = "#D53E4F", guide = guide_colorbar(title = "Acousticness"))
-
-# create scatterplot with geom_jitter() and geom_smooth()
-scatter_plot <- ggplot(audio_features, aes(x = energy, y = loudness, color = acousticness, text = track.name)) +
-  geom_jitter(alpha = 0.8, size = 2) +
-  facet_wrap(~ playlist, scales = "free", labeller = labeller(playlist = c("Classical Essentials" = "Classical Essentials", "Iconic Soundtracks" = "Iconic Soundtracks"))) +
-  geom_smooth(aes(group = playlist), method = "lm", se = FALSE, color = "black", alpha = 0.5, size = 1) +
-  scale_x_continuous(limits = c(0, 1), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(-45, -5), expand = c(0, 0)) +
-  color_scale +
-  labs(x = "Energy", y = "Loudness", title = "Scatterplot of Energy vs. Loudness for Classical and Soundtrack Playlists", color = "Acousticness") +
-  theme_bw() +
-  theme(panel.grid.major = element_line(color = "gray90"), panel.grid.minor = element_blank(), panel.border = element_blank(), axis.line = element_line(colour = "black"), strip.text = element_text(size = 14)) 
-
-# convert scatterplot to plotly object for interactivity
-scatter_plot <- ggplotly(scatter_plot, tooltip = c("color", "text", "x", "y"), width = 1000, height = 500)
-
-# set plot background to grid
-scatter_plot %>% layout(plot_bgcolor = "white", paper_bgcolor = "white", xaxis = list(showgrid = TRUE, gridcolor = "gray90"), yaxis = list(showgrid = TRUE, gridcolor = "gray90"))
-
-# display the plot
-scatter_plot
-
-```
-
----
-
-This graph shows a scatterplot of the energy vs. loudness for two different playlists: "Classical Essentials" and "Iconic Soundtracks". Each point in the scatterplot represents a track, with the color of the point indicating the acousticness of the track. The plot also includes a linear regression line for each playlist, with no standard error shown.
-
-In general, the "Iconic Soundtracks" playlist tends to have tracks with higher energy and higher loudness compared to the "Classical Essentials" playlist, which tends to have tracks with lower energy and lower loudness. However, there is some overlap between the playlists, particularly in the range of energy values around 0.4 and loudness values around -10.
-
-The acousticness of the tracks in each playlist varies widely, with some tracks having very low acousticness values (indicating that they have a more electronic or synthetic sound) and others having very high acousticness values (indicating that they have a more natural or acoustic sound). The color scale used in the plot ranges from yellow (low acousticness) to red (high acousticness).
-
-Overall, this plot provides a useful visual representation of the differences in energy and loudness between these two playlists and how the acousticness of the tracks varies within each playlist.
-
-### Chroma and Timbre values of The Blade Runnner Blues
-
-```{r}
-
-# extract chroma values
-get_chroma <- function(track.id) {
-  audio_analysis <- get_track_audio_analysis(track.id)
-  chroma <- audio_analysis$segments %>%
-    select(start, pitches) %>%
-    unnest(pitches) %>%
-    mutate(pitch_class = rep(c("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"), length.out = length(pitches)),
-           intensity = as.numeric(pitches)) %>%
-    select(-pitches) %>%
-    spread(pitch_class, intensity, fill = 0)
-  
-  return(chroma)
-}
-
-get_timbre <- function(track.id) {
-  audio_analysis <- get_track_audio_analysis(track.id)
-  timbre <- audio_analysis$segments %>%
-    select(start, timbre) %>%
-    unnest(timbre) %>%
-    mutate(timbre_number = rep(1:12, length.out = length(timbre)),
-           value = as.numeric(timbre)) %>%
-    select(-timbre) %>%
-    spread(timbre_number, value, fill = 0)
-  
-  return(timbre)
-}
-
-
-# get chroma data frames for all tracks in iconic_soundtracks playlist
-iconic_soundtracks_chroma <- map(iconic_soundtracks$track.id, get_chroma)
-
-iconic_soundtracks_chroma <- map2(iconic_soundtracks_chroma, iconic_soundtracks$track.id, ~ .x %>% mutate(track_id = .y))
-
-iconic_soundtracks_chroma <- bind_rows(iconic_soundtracks_chroma)
-
-classical_essentials_chroma <- map(classical_essentials$track.id, get_chroma)
-
-classical_essentials_chroma <- map2(classical_essentials_chroma, classical_essentials$track.id, ~ .x %>% mutate(track_id = .y))
-
-classical_essentials_chroma <- bind_rows(classical_essentials_chroma)
-
-# get chroma data frames for all tracks in iconic_soundtracks playlist
-iconic_soundtracks_timbre <- map(iconic_soundtracks$track.id, get_timbre)
-
-iconic_soundtracks_timbre <- map2(iconic_soundtracks_timbre, iconic_soundtracks$track.id, ~ .x %>% mutate(track_id = .y))
-
-iconic_soundtracks_timbre <- bind_rows(iconic_soundtracks_timbre)
-
-classical_essentials_timbre <- map(classical_essentials$track.id, get_timbre)
-
-classical_essentials_timbre <- map2(classical_essentials_timbre, classical_essentials$track.id, ~ .x %>% mutate(track_id = .y))
-
-classical_essentials_timbre <- bind_rows(classical_essentials_timbre)
-
-
-# get chroma and timbre data for the outlier track
-outlier_chroma <- get_chroma("575blCgesVtCu0HEYaIcas")
-outlier_timbre <- get_timbre("575blCgesVtCu0HEYaIcas")
-
-# create chromagram plot
-chromagram <- outlier_chroma %>%
-  select(-start) %>%
-  as.matrix() %>%
-  t() %>%
-  round(3) %>%
-  plot_ly(
-    x = 1:12, y = 0:20, z = .,
-    type = "heatmap", colorscale = "Viridis"
-  ) %>%
-  layout(
-    title = "Chromagram for Blade Runner Blues",
-    xaxis = list(title = "<b>Pitch Class</b>", tickvals = 1:12, ticktext = c("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"), showgrid = FALSE),
-    yaxis = list(title = "<b>Time (seconds)</b>", showgrid = FALSE),
-    hoverlabel = list(
-      bgcolor = "white",
-      font = list(size = 12),
-      bordercolor = "black"
-    )
-  )
-
-# create cepstrogram plot
-cepstrogram <- outlier_timbre %>%
-  select(-start) %>%
-  as.matrix() %>%
-  t() %>%
-  round(3) %>%
-  plot_ly(
-    x = 1:12, y = 0:20, z = .,
-    type = "heatmap", colorscale = "ViridisLite"
-  ) %>%
-  layout(
-    title = "Cepstrogram for Blade Runner Blues",
-    xaxis = list(title = "<b>Cepstral Coefficient</b>", showgrid = FALSE),
-    yaxis = list(title = "<b>Time (seconds)</b>", showgrid = FALSE),
-    hoverlabel = list(
-      bgcolor = "white",
-      font = list(size = 12),
-      bordercolor = "black"
-    )
-  )
-
-
-# create combined plot
-combined_plot <- subplot(
-  chromagram, cepstrogram,
-  nrows = 2, margin = 0.05,
-  heights = c(0.5, 0.5),
-  titleX = FALSE, titleY = FALSE
-)
-
-# add description
-description <- description <- "<b>Chromagram:</b> The distribution of the 12 pitch classes over time in the selected song.<br><b>Cepstrogram:</b> The distribution of the 12 cepstral coefficients over time, which are related to the timbre of the sound. The combined plot allows for a comparison of the two features, highlighting the rhythmic and tonal characteristics of the song. When hovering over the chromagram plot or cepstrogram plot, the x values show the pitch class or cepstral coefficient, the y value represents the time in seconds and the z value represents the intensity of the pitch class or cepstral coefficient at the given time."
-
-combined_plot <- combined_plot %>% layout(
-  title = "Chromagram and Cepstrogram for Blade Runner Blues",
-  annotations = list(
-    x = 0.5, y = -0.12,
-    text = description,
-    showarrow = FALSE,
-    xref = "paper",
-    yref = "paper",
-    font = list(size = 12)
-  )
-)
-
-# display plot
-combined_plot
-
-```
-
----
-
-<b>Chromagram:</b> The distribution of the 12 pitch classes over time in the selected song.<br><b>Cepstrogram:</b> The distribution of the 12 cepstral coefficients over time, which are related to the timbre of the sound. The combined plot allows for a comparison of the two features, highlighting the rhythmic and tonal characteristics of the song. When hovering over the chromagram plot or cepstrogram plot, the x values show the pitch class or cepstral coefficient, the y value represents the time in seconds and the z value represents the intensity of the pitch class or cepstral coefficient at the given time.
-
-Looking at the cepstrogram plot, we can see that the song "Blade Runner Blues" has a relatively smooth and uniform distribution of timbre features over time, with a prominent peak at the lower cepstral coefficients. This suggests a relatively low level of roughness in the sound, which is consistent with the overall mellow and atmospheric mood of the song.
-
-In terms of brightness and warmth, the cepstrogram does not reveal any particularly strong or distinctive patterns, which could suggest that these timbral features are not as salient in this song as other characteristics such as the use of ambient textures and electronic instrumentation.
-
-Given that "Blade Runner Blues" is part of a playlist of iconic soundtracks, it is worth noting that the song was composed by Vangelis for the soundtrack of the 1982 film "Blade Runner", which is considered a landmark of science fiction cinema. The use of electronic instruments and atmospheric textures in the song is consistent with the film's dystopian and futuristic themes, while the melancholic and introspective mood of the music reflects the emotional depth and complexity of the film's characters and themes.
-
-Overall, the chromagram and cepstrogram plots provide valuable insights into the melodic and timbral characteristics of "Blade Runner Blues", which can be used to shed light on the song's structure, style, and meaning, as well as its cultural and historical significance as part of the iconic "Blade Runner" soundtrack.
-
-
-### Chroma Values Soundstrack outlier
-
-```{r}
-
-# get playlist data
-iconic_soundtracks <- get_playlist_audio_features("","37i9dQZF1DX1tz6EDao8it")
-classical_essentials <- get_playlist_audio_features("","37i9dQZF1DWWEJlAGA9gs0")
-
-# extract chroma values
-get_chroma <- function(track.id) {
-  audio_analysis <- get_track_audio_analysis(track.id)
-  chroma <- audio_analysis$segments %>%
-    select(start, pitches) %>%
-    unnest(pitches) %>%
-    mutate(pitch_class = rep(c("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"), length.out = length(pitches)),
-           intensity = as.numeric(pitches)) %>%
-    select(-pitches) %>%
-    spread(pitch_class, intensity, fill = 0)
-  
-  return(chroma)
-}
-
-
-# get chroma data frames for all tracks in iconic_soundtracks playlist
-iconic_soundtracks_chroma <- map(iconic_soundtracks$track.id, get_chroma)
-
-iconic_soundtracks_chroma <- map2(iconic_soundtracks_chroma, iconic_soundtracks$track.id, ~ .x %>% mutate(track_id = .y))
-
-iconic_soundtracks_chroma <- bind_rows(iconic_soundtracks_chroma)
-
-chroma_data <- iconic_soundtracks_chroma %>%
-  filter(track_id == "575blCgesVtCu0HEYaIcas")
-
-chroma_data <- chroma_data %>%
-  select(-track_id)
-
-chroma_data <- chroma_data %>%
-  gather(note, value, -start)
-
-chromagram <- chroma_data %>%
-  group_by(note) %>%
-  summarise(chroma = sum(value))
-
-
-
-plotly_chroma_feature <- chromagram %>%
-  plot_ly(x = ~note, y = ~chroma, type = "bar",
-          text = ~paste0(round(chroma * 100, 1), "%"),
-          hoverinfo = "text",
-          marker = list(color = "rgba(55, 128, 191, 0.7)",
-                        line = list(color = "rgba(55, 128, 191, 1.0)",
-                                    width = 1))) %>%
-  layout(xaxis = list(title = "Note"),
-         yaxis = list(title = "Chroma value"),
-         title = list(text = "Chroma feature Blade Runner Blues"))
-
-plotly_chroma_feature
-
-
-```
-
----
-
-These plots show the chroma features for 'Blade Runner Blues' from the "iconic_soundtracks" Spotify playlist and ... 
-
-The chroma feature is a way of representing the tonal content of an audio signal. It is based on the 12 different pitches in a chromatic scale (C, C#, D, D#, E, F, F#, G, G#, A, A#, B), and for each pitch it calculates a value that represents the amount of energy in the audio signal that corresponds to that pitch.
-
-In this plot, the x-axis shows the 12 different pitches (notes) in the chromatic scale, and the y-axis shows the corresponding chroma value for each note. The height of each bar represents the amount of energy in the audio signal that corresponds to that note, and the color of each bar indicates the magnitude of the chroma value (with darker colors indicating higher values). The hover text displays the exact percentage of energy in the audio signal that corresponds to each note.
-
-In summary, this plot shows the relative distribution of energy across the 12 different pitches in the audio signal for a specific track.
-
-### Chroma Values Classical outlier 
-
-```{r}
-
-# extract chroma values
-get_chroma <- function(track.id) {
-  audio_analysis <- get_track_audio_analysis(track.id)
-  chroma <- audio_analysis$segments %>%
-    select(start, pitches) %>%
-    unnest(pitches) %>%
-    mutate(pitch_class = rep(c("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"), length.out = length(pitches)),
-           intensity = as.numeric(pitches)) %>%
-    select(-pitches) %>%
-    spread(pitch_class, intensity, fill = 0)
-  
-  return(chroma)
-}
-
-# get chroma data frames for all tracks in iconic_soundtracks playlist
-
-classical_essentials_chroma <- map(classical_essentials$track.id, get_chroma)
-
-classical_essentials_chroma <- map2(classical_essentials_chroma, classical_essentials$track.id, ~ .x %>% mutate(track_id = .y))
-
-classical_essentials_chroma <- bind_rows(classical_essentials_chroma)
-
-
-chroma_data <- classical_essentials_chroma %>%
-  filter(track_id == "5fdp9rXfEixCGLM1Og4EN1")
-
-chroma_data <- chroma_data %>%
-  select(-track_id)
-
-chroma_data <- chroma_data %>%
-  gather(note, value, -start)
-
-chromagram <- chroma_data %>%
-  group_by(note) %>%
-  summarise(chroma = sum(value))
-
-
-plotly_chroma_feature <- chromagram %>%
-  plot_ly(x = ~note, y = ~chroma, type = "bar",
-          text = ~paste0(round(chroma * 100, 1), "%"),
-          hoverinfo = "text",
-          marker = list(color = "rgba(55, 128, 191, 0.7)",
-                        line = list(color = "rgba(55, 128, 191, 1.0)",
-                                    width = 1))) %>%
-  layout(xaxis = list(title = "Note"),
-         yaxis = list(title = "Chroma value"),
-         title = list(text = "Chroma feature for track Gnossienne No. 1"))
-
-plotly_chroma_feature
-
-```
-
----
-
-These plots show the chroma features for 'Blade Runner Blues' from the "iconic_soundtracks" Spotify playlist and ... 
-
-The chroma feature is a way of representing the tonal content of an audio signal. It is based on the 12 different pitches in a chromatic scale (C, C#, D, D#, E, F, F#, G, G#, A, A#, B), and for each pitch it calculates a value that represents the amount of energy in the audio signal that corresponds to that pitch.
-
-In this plot, the x-axis shows the 12 different pitches (notes) in the chromatic scale, and the y-axis shows the corresponding chroma value for each note. The height of each bar represents the amount of energy in the audio signal that corresponds to that note, and the color of each bar indicates the magnitude of the chroma value (with darker colors indicating higher values). The hover text displays the exact percentage of energy in the audio signal that corresponds to each note.
-
-In summary, this plot shows the relative distribution of energy across the 12 different pitches in the audio signal for a specific track.
-
- 
-Introduction {data-icon="fa-file-text"}
+Conclusion {data-icon="ion-android-bulb"}
 =======================================================
 
-### Difference between classical music and movie soundtracks
+Column {data-width=600}
+-------------------------
 
-For my portfolio, I have chosen a corpus that compares classical music with film soundtracks. The corpus will include track from the “Classical Essential” and “Iconic Soundtracks” playlists on Spotify. I am interested in this because both classical music and film soundtracks can evoke emotions in listeners, but the audiences of both can be very different, which is why I want to see what differentiates the two.
+### The Emotional Power of Music: Unraveling the Relationship between Classical and Soundtrack Music through Data Analysis
 
-In my corpus I will compare classical compositions with film soundtracks. Within these groups, there are various natural subgroups such as individual composers, specific movies, and musical genres. I expect to find differences in instrumentation and production between the two groups, as well as differences between individual composers and genres. However, I also anticipate finding commonalities in melody, harmony, and musical structure.
+**Discussion** 
 
-The tracks in my corpus are representative of the groups I want to compare, but there are probably some recordings missing or variations that could affect the analysis. For example, there may be differences between the live and studio versions of a classical piece that are not reflected in the corpus. I will keep this in mind when the data.
+The findings presented in this analysis provide valuable insights into the emotional content of songs in two different playlists, "Classical Essentials" and "Iconic Soundtracks". By analyzing various musical features such as energy and loudness levels, acousticness, chord progressions, key distribution, tempo, and self-similarity matrices, the emotional tone of each playlist was explored.
 
-One atypical track in my corpus is "Hedwig's Theme" by John Williams, which for most of the track uses only the celesta and a unique melody. A typical track is "Für Elise" by Ludwig van Beethoven, which is a well-known classical piece with a recognizable melody.
+The scatterplot analysis revealed that the "Classical Essentials" playlist tends to have music with lower energy and loudness levels and higher acousticness levels, suggesting a more relaxed and subdued emotional tone. In contrast, the "Iconic Soundtracks" playlist has a wider range of energy and loudness levels, suggesting a more dynamic and varied emotional tone.
+
+The chromagram analysis provided more detailed insights into the musical techniques and styles used in each playlist to convey different emotional tones. The "Classical Essentials" playlist used various musical techniques to create a balanced and serene emotional atmosphere, while the "Iconic Soundtracks" playlist used a broader range of musical techniques and styles to convey a more diverse range of emotions, including somber and emotionally complex tones.
+
+The chordograms revealed the emotional complexity and diversity of songs within each playlist, with each playlist containing songs with varying degrees of emotional complexity and diversity. The key plots and frequency plots provided additional insights into the emotional tone of each playlist, with the "Iconic Soundtracks" playlist having a higher number of songs in minor keys, suggesting a somber and emotionally complex tone.
+
+The tempo was also found to be an important factor in shaping the emotional content of each playlist. The "Iconic Soundtracks" playlist had a more dynamic tempo, further contributing to the emotionally diverse tone of the playlist.
+
+Overall, this analysis highlights the importance of various musical features in shaping emotional responses to music. By understanding how musical features contribute to the emotional content of music, we can better appreciate the diverse range of emotions that can be conveyed through music.
+
+**Conclusion**
+
+The findings presented show different aspects related to the emotional content and characteristics of songs in two playlists, "Classical Essentials" and "Iconic Soundtracks". The scatterplot shows that the "Classical Essentials" playlist tends to have music with lower energy and loudness levels, and higher acousticness levels, which suggests a more relaxed and subdued emotional tone. In contrast, the "Iconic Soundtracks" playlist has a wider range of energy and loudness levels, suggesting a more dynamic and varied emotional tone. The chromagrams of representative songs from each playlist demonstrate the diverse range of emotions that can be conveyed through music, with each playlist using various musical techniques and styles to convey different emotional tones.
+
+The chordograms can reveal the emotional complexity and diversity of songs within a playlist, while the key plots and frequency plots can indicate the emotional tone of the playlist. The tempo can also be used to convey different emotional states and themes. The self-similarity matrices provide insights into the structure and patterns of the songs and can be used to infer the emotions they may evoke.
+
+Furthermore, the "Iconic Soundtracks" playlist has a higher number of songs in minor keys and a more dynamic tempo, suggesting a somber and emotionally complex tone, while the "Classical Essentials" playlist has a more even distribution of keys and a more subdued tempo, suggesting a balanced emotional content. Overall, these findings provide useful visualizations and analyses of the emotional content of songs in different playlists and highlight the importance of various musical features in shaping emotional responses to music.
+
+Based on the findings presented, it can be concluded that the emotional content of the "Classical Essentials" playlist tends to be more relaxed and subdued, with lower energy and loudness levels and higher acousticness levels. On the other hand, the emotional content of the "Iconic Soundtracks" playlist is more dynamic and varied, with a wider range of energy and loudness levels and a higher number of songs in minor keys, suggesting a somber and emotionally complex tone. Overall, the visualizations and analyses of the emotional content of songs in these two playlists highlight the importance of various musical features in shaping emotional responses to music and demonstrate the diverse range of emotions that can be conveyed through music.
+
+Column {data-width=200}
+-------------------------
+
+### Classical Essentials
+
+<iframe src="https://open.spotify.com/embed/playlist/37i9dQZF1DWWEJlAGA9gs0?utm_source=generator" width="100%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+
+Column {data-width=200}
+-------------------------
+
+### Iconic Soundtracks
+
+<iframe src="https://open.spotify.com/embed/playlist/37i9dQZF1DX1tz6EDao8it?utm_source=generator" width="100%" height="100%" frameBorder="0" allowtransparency="true" allow="encrypted-media" data-external="1"></iframe>
+ 
